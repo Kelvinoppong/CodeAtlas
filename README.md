@@ -15,7 +15,7 @@
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
-  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#architecture">Architecture</a> •
   <a href="#api-reference">API</a> •
   <a href="#roadmap">Roadmap</a>
 </p>
@@ -26,6 +26,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.7-3178C6?style=flat-square&logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python" alt="Python" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/Tree--sitter-Parsing-green?style=flat-square" alt="Tree-sitter" />
 </p>
 
 ---
@@ -37,10 +38,10 @@
 <td width="50%">
 
 ### 🌳 Interactive File Explorer
-Browse your codebase with a smart file tree that respects `.gitignore`, detects languages, and provides instant navigation.
+Browse your codebase with a smart file tree that respects `.gitignore`, detects 30+ languages, and provides instant navigation.
 
 ### 🔮 Dependency Graphs
-Visualize how your code connects — imports, calls, and references rendered as beautiful, interactive node graphs.
+Visualize how your code connects — imports, calls, and references rendered as beautiful, interactive diamond node graphs.
 
 ### 💬 AI-Powered Q&A
 Ask natural questions about your codebase: *"How does authentication work?"*, *"Where is this function used?"*, *"What happens if I change X?"*
@@ -49,13 +50,13 @@ Ask natural questions about your codebase: *"How does authentication work?"*, *"
 <td width="50%">
 
 ### 📝 Smart Code Viewer
-Syntax-highlighted code with symbol navigation, jump-to-definition, and inline AI explanations.
+Syntax-highlighted code with symbol navigation, jump-to-definition, and inline explanations.
 
-### 🛡️ Safe AI Modifications
-Propose multi-file refactors with full diff preview, one-click apply, and instant rollback. Never lose code.
+### 🔍 Symbol Search
+Find functions, classes, and variables instantly. Search across your entire codebase with real-time results.
 
-### 🔍 Semantic Search
-Find code by meaning, not just text. Search across symbols, files, and documentation with vector-powered retrieval.
+### 🧠 Code Parsing Engine
+Tree-sitter powered parsing for Python, JavaScript, and TypeScript with fallback regex support for other languages.
 
 </td>
 </tr>
@@ -115,10 +116,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment (add your API keys)
-cp .env.example .env
-
-# Start the API server
+# Start the API server (auto-creates tables)
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -130,31 +128,89 @@ cd frontend
 # Install dependencies
 npm install
 
-# Configure environment
-cp .env.example .env.local
-
 # Start development server
 npm run dev
 ```
 
-### 5. Open CodeAtlas
+### 5. Import Your First Project
 
-Visit **[http://localhost:3000](http://localhost:3000)** and start exploring!
+1. Visit **[http://localhost:3000](http://localhost:3000)**
+2. Click **Import** in the sidebar
+3. Enter your project name and local path (e.g., `/home/user/my-project`)
+4. Wait for indexing to complete
+5. Explore your codebase!
+
+---
+
+## 🏗️ Architecture
+
+CodeAtlas uses a modern, layered architecture designed for extensibility and performance.
+
+### System Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (Next.js)                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  File Tree  │  │   Graph     │  │    Code Editor      │  │
+│  │  Component  │  │   Viewer    │  │    + Chat Panel     │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
+│         └────────────────┼────────────────────┘              │
+│                          │ Zustand Store                     │
+│                          │ API Client                        │
+└──────────────────────────┼──────────────────────────────────┘
+                           │ HTTP/REST
+┌──────────────────────────┼──────────────────────────────────┐
+│                    Backend (FastAPI)                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   API       │  │  Indexing   │  │   AI Integration    │  │
+│  │   Routes    │  │  Engine     │  │   (Chat/Explain)    │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
+│         └────────────────┼────────────────────┘              │
+│                          │ SQLAlchemy Async                  │
+└──────────────────────────┼──────────────────────────────────┘
+                           │
+┌──────────────────────────┼──────────────────────────────────┐
+│              PostgreSQL + pgvector                           │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────────────┐    │
+│  │Projects │ │Snapshots│ │ Files   │ │ Symbols/Refs    │    │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Indexing Pipeline
+
+When you import a project, CodeAtlas runs a multi-stage indexing pipeline:
+
+```
+1. SCAN          2. PARSE           3. EXTRACT         4. STORE
+   │                 │                  │                  │
+   ▼                 ▼                  ▼                  ▼
+┌──────────┐    ┌──────────┐      ┌──────────┐      ┌──────────┐
+│ Discover │───▶│ Tree-    │─────▶│ Symbols  │─────▶│ Database │
+│ Files    │    │ sitter   │      │ + Refs   │      │ + Index  │
+│          │    │ Parse    │      │          │      │          │
+│ .gitignore    │ AST      │      │ Classes  │      │ Fast     │
+│ Binary skip   │ Extract  │      │ Functions│      │ Queries  │
+└──────────┘    └──────────┘      │ Imports  │      └──────────┘
+                                  └──────────┘
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | Next.js 14, React 18, TypeScript, TailwindCSS |
-| **Visualization** | React Flow, Mermaid |
-| **Code Editor** | Monaco Editor |
-| **Backend** | FastAPI, Python 3.11+ |
-| **Database** | PostgreSQL 16 + pgvector |
-| **Task Queue** | Redis (optional) |
-| **AI/LLM** | Gemini 1.5 Flash, OpenAI GPT-4 |
-| **Code Parsing** | Tree-sitter |
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| **Frontend** | Next.js 14, React 18, TypeScript | UI Framework |
+| **Styling** | TailwindCSS | Dark theme, responsive design |
+| **State** | Zustand | Global state management |
+| **Visualization** | React Flow | Interactive graph rendering |
+| **Backend** | FastAPI, Python 3.11+ | Async API server |
+| **ORM** | SQLAlchemy 2.0 (async) | Database models |
+| **Database** | PostgreSQL 16 + pgvector | Persistent storage + vectors |
+| **Parsing** | Tree-sitter | AST extraction for Python/JS/TS |
+| **AI/LLM** | OpenAI / Gemini | Chat & code explanation |
 
 ---
 
@@ -162,39 +218,55 @@ Visit **[http://localhost:3000](http://localhost:3000)** and start exploring!
 
 ```
 CodeAtlas/
-├── frontend/                    # Next.js application
+├── frontend/                        # Next.js application
 │   ├── src/
-│   │   ├── app/                 # Pages, layouts, global styles
-│   │   │   ├── globals.css      # Dark theme + custom styles
-│   │   │   ├── layout.tsx       # Root layout
-│   │   │   └── page.tsx         # Main 3-pane workspace
-│   │   └── components/          # React components
-│   │       ├── Header.tsx       # Top navigation bar
-│   │       ├── FileTree.tsx     # Left panel - file explorer
-│   │       ├── CenterCanvas.tsx # Center panel - tabs container
-│   │       ├── GraphViewer.tsx  # Dependency graph (React Flow)
-│   │       ├── ChatPanel.tsx    # AI chat with citations
-│   │       └── CodeEditor.tsx   # Right panel - code viewer
+│   │   ├── app/                     # Pages & layouts
+│   │   │   ├── globals.css          # Dark theme styles
+│   │   │   ├── layout.tsx           # Root layout
+│   │   │   └── page.tsx             # Main 3-pane workspace
+│   │   ├── components/              # React components
+│   │   │   ├── Header.tsx           # Nav bar + symbol search
+│   │   │   ├── FileTree.tsx         # Left panel - file explorer
+│   │   │   ├── CenterCanvas.tsx     # Tab container
+│   │   │   ├── GraphViewer.tsx      # Dependency graph
+│   │   │   ├── ChatPanel.tsx        # AI chat interface
+│   │   │   ├── CodeEditor.tsx       # Syntax-highlighted viewer
+│   │   │   └── ProjectImport.tsx    # Import modal
+│   │   └── lib/                     # Utilities
+│   │       ├── api.ts               # API client + types
+│   │       └── store.ts             # Zustand state
 │   ├── package.json
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
+│   └── tailwind.config.ts
 │
-├── backend/                     # FastAPI application
+├── backend/                         # FastAPI application
 │   ├── app/
-│   │   ├── api/                 # API route handlers
-│   │   │   ├── projects.py      # Project import & management
-│   │   │   ├── snapshots.py     # Snapshot indexing & file trees
-│   │   │   ├── files.py         # File content retrieval
-│   │   │   ├── symbols.py       # Symbol search & references
-│   │   │   ├── ai.py            # Chat, explain, propose changes
-│   │   │   └── changesets.py    # Apply/rollback code changes
-│   │   ├── core/
-│   │   │   └── config.py        # Environment configuration
-│   │   └── main.py              # FastAPI app entry point
+│   │   ├── api/                     # Route handlers
+│   │   │   ├── projects.py          # CRUD + import
+│   │   │   ├── snapshots.py         # Tree, graphs, status
+│   │   │   ├── files.py             # Content retrieval
+│   │   │   ├── symbols.py           # Search + references
+│   │   │   ├── ai.py                # Chat, explain
+│   │   │   └── changesets.py        # Apply/rollback
+│   │   ├── core/                    # Configuration
+│   │   │   ├── config.py            # Settings
+│   │   │   └── database.py          # Async DB session
+│   │   ├── models/                  # SQLAlchemy models
+│   │   │   ├── project.py           # Project entity
+│   │   │   ├── snapshot.py          # Indexed snapshot
+│   │   │   ├── file.py              # File metadata
+│   │   │   ├── symbol.py            # Symbols + references
+│   │   │   ├── embedding.py         # Vector chunks
+│   │   │   └── changeset.py         # Code changes
+│   │   ├── indexer/                 # Indexing engine
+│   │   │   ├── scanner.py           # File discovery
+│   │   │   ├── parser.py            # Tree-sitter + regex
+│   │   │   └── engine.py            # Pipeline orchestration
+│   │   └── main.py                  # FastAPI entry point
 │   └── requirements.txt
 │
-├── docker-compose.yml           # PostgreSQL + Redis containers
-├── plan.md                      # Detailed implementation plan
+├── docker-compose.yml               # PostgreSQL + Redis
+├── plan.md                          # Detailed spec
+├── LICENSE                          # MIT
 └── README.md
 ```
 
@@ -209,15 +281,18 @@ CodeAtlas/
 | `GET` | `/projects` | List all projects |
 | `POST` | `/projects/import` | Import a new repository |
 | `GET` | `/projects/{id}` | Get project details |
-| `POST` | `/projects/{id}/snapshots` | Start indexing |
+| `DELETE` | `/projects/{id}` | Delete project |
+| `POST` | `/projects/{id}/snapshots` | Start async indexing |
+| `POST` | `/projects/{id}/snapshots/sync` | Index synchronously |
 
 ### Snapshots & Files
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/snapshots/{id}/status` | Get indexing progress |
-| `GET` | `/snapshots/{id}/tree` | Get file tree |
+| `GET` | `/snapshots/{id}/tree` | Get file tree structure |
 | `GET` | `/snapshots/{id}/files?path=...` | Get file content |
+| `GET` | `/snapshots/{id}/files/list` | List all files |
 | `GET` | `/snapshots/{id}/graphs/deps` | Get dependency graph |
 
 ### Symbols
@@ -225,8 +300,10 @@ CodeAtlas/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/snapshots/{id}/symbols?query=...` | Search symbols |
+| `GET` | `/snapshots/{id}/symbols?kind=class` | Filter by kind |
 | `GET` | `/snapshots/{id}/symbols/{symbolId}` | Get symbol details |
-| `GET` | `/snapshots/{id}/symbols/{symbolId}/references` | Find all references |
+| `GET` | `/snapshots/{id}/symbols/{symbolId}/references` | Find references |
+| `GET` | `/snapshots/{id}/symbols/kinds/list` | List symbol kinds |
 
 ### AI
 
@@ -234,7 +311,7 @@ CodeAtlas/
 |--------|----------|-------------|
 | `POST` | `/snapshots/{id}/ai/chat` | Chat about codebase |
 | `POST` | `/snapshots/{id}/ai/explain` | Explain file/symbol |
-| `POST` | `/snapshots/{id}/ai/propose-changes` | Generate refactor plan |
+| `POST` | `/snapshots/{id}/ai/propose-changes` | Generate refactor |
 
 ### ChangeSets
 
@@ -242,24 +319,34 @@ CodeAtlas/
 |--------|----------|-------------|
 | `GET` | `/changesets` | List all changesets |
 | `GET` | `/changesets/{id}` | Get changeset details |
-| `POST` | `/changesets/{id}/apply` | Apply changes to repo |
-| `POST` | `/changesets/{id}/rollback` | Undo applied changes |
+| `POST` | `/changesets/{id}/apply` | Apply changes |
+| `POST` | `/changesets/{id}/rollback` | Undo changes |
 | `POST` | `/changesets/{id}/commit` | Create git commit |
 
 ---
 
 ## 🗺️ Roadmap
 
-### Phase 1 — MVP ✅
+### Phase 1 — Foundation ✅
 - [x] 3-pane UI (File Tree / Graph / Editor)
-- [x] File tree with language detection
+- [x] Dark theme with beautiful aesthetics
+- [x] SQLAlchemy models (Project, Snapshot, File, Symbol)
+- [x] Async PostgreSQL with pgvector support
+- [x] File scanner with gitignore/binary detection
+- [x] Tree-sitter parsing (Python, JavaScript, TypeScript)
+- [x] Regex fallback for other languages
+- [x] API client with TypeScript types
+- [x] Zustand state management
+- [x] Project import with sync indexing
+- [x] File tree from database
+- [x] Code viewer with syntax highlighting
+- [x] Symbol search
 - [x] Dependency graph visualization
-- [x] AI chat with citations
-- [x] Basic symbol search
+- [x] AI chat interface
 
-### Phase 2 — Safe Edits & Git
+### Phase 2 — Safe Edits & Git ⏳
 - [ ] ChangeSet diff viewer
-- [ ] Apply/rollback functionality
+- [ ] Apply/rollback functionality  
 - [ ] Multi-file refactoring
 - [ ] Git commit integration
 - [ ] Branch-aware snapshots
@@ -279,17 +366,20 @@ CodeAtlas/
 Create a `.env` file in the `backend/` directory:
 
 ```env
-# Database
+# Database (required)
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/codeatlas
 
-# AI Providers (at least one required for AI features)
+# AI Providers (optional - for AI features)
 OPENAI_API_KEY=sk-...
 GEMINI_API_KEY=...
 
 # Optional
 REDIS_URL=redis://localhost:6379/0
 DEBUG=true
+CORS_ORIGINS=["http://localhost:3000"]
 ```
+
+The database tables are created automatically on first startup.
 
 ---
 
