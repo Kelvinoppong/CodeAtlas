@@ -2,137 +2,155 @@
 Symbol search and references endpoints
 """
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from typing import Optional, List
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, or_
+
+from app.core.database import get_db
+from app.models.symbol import Symbol, Reference, SymbolKind, ReferenceKind
+from app.models.file import File
 
 router = APIRouter()
 
 
-class Symbol(BaseModel):
+class SymbolResponse(BaseModel):
     id: str
     name: str
-    kind: str  # function, class, method, variable, module
+    kind: str
     file_path: str
     start_line: int
     end_line: int
     signature: Optional[str] = None
     docstring: Optional[str] = None
+    parent_id: Optional[str] = None
 
 
-class Reference(BaseModel):
+class ReferenceResponse(BaseModel):
     file_path: str
     line: int
     column: int
-    kind: str  # import, call, usage
+    kind: str
 
 
-# Demo symbols
-_demo_symbols = [
-    Symbol(
-        id="1",
-        name="Minesweeper",
-        kind="class",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=4,
-        end_line=75,
-        signature="class Minesweeper()",
-        docstring="Minesweeper game representation",
-    ),
-    Symbol(
-        id="2",
-        name="__init__",
-        kind="method",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=9,
-        end_line=34,
-        signature="def __init__(self, height=8, width=8, mines=8)",
-    ),
-    Symbol(
-        id="3",
-        name="print",
-        kind="method",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=36,
-        end_line=49,
-        signature="def print(self)",
-        docstring="Prints a text-based representation of where mines are located.",
-    ),
-    Symbol(
-        id="4",
-        name="is_mine",
-        kind="method",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=51,
-        end_line=53,
-        signature="def is_mine(self, cell)",
-    ),
-    Symbol(
-        id="5",
-        name="nearby_mines",
-        kind="method",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=55,
-        end_line=68,
-        signature="def nearby_mines(self, cell)",
-        docstring="Returns the number of mines within one row and column of a given cell.",
-    ),
-    Symbol(
-        id="6",
-        name="won",
-        kind="method",
-        file_path="/minesweeper/minesweeper.py",
-        start_line=70,
-        end_line=75,
-        signature="def won(self)",
-        docstring="Checks if all mines have been flagged.",
-    ),
-]
-
-
-@router.get("", response_model=List[Symbol])
+@router.get("", response_model=List[SymbolResponse])
 async def search_symbols(
     snapshot_id: str,
     query: Optional[str] = Query(None),
     kind: Optional[str] = Query(None),
+    file_path: Optional[str] = Query(None),
+    limit: int = Query(100, le=500),
+    db: AsyncSession = Depends(get_db),
 ):
     """Search for symbols in the codebase"""
-    results = _demo_symbols
-    
+    # Build query
+    stmt = select(Symbol, File).join(File, Symbol.file_id == File.id).where(
+        Symbol.snapshot_id == snapshot_id
+    )
+
     if query:
-        query_lower = query.lower()
-        results = [s for s in results if query_lower in s.name.lower()]
-    
+        stmt = stmt.where(
+            or_(
+                Symbol.name.ilike(f"%{query}%"),
+                Symbol.qualified_name.ilike(f"%{query}%"),
+            )
+        )
+
     if kind:
-        results = [s for s in results if s.kind == kind]
-    
-    return results
+        try:
+            symbol_kind = SymbolKind(kind)
+            stmt = stmt.where(Symbol.kind == symbol_kind)
+        except ValueError:
+            pass  # Invalid kind, ignore filter
 
+    if file_path:
+        stmt = stmt.where(File.path == file_path)
 
-@router.get("/{symbol_id}", response_model=Symbol)
-async def get_symbol(snapshot_id: str, symbol_id: str):
-    """Get symbol details"""
-    for s in _demo_symbols:
-        if s.id == symbol_id:
-            return s
-    return None
+    stmt = stmt.limit(limit)
 
+    result = await db.execute(stmt)
+    rows = result.all()
 
-@router.get("/{symbol_id}/references", response_model=List[Reference])
-async def get_references(snapshot_id: str, symbol_id: str):
-    """Get all references to a symbol"""
-    # Demo references
     return [
-        Reference(
-            file_path="/minesweeper/minesweeper.py",
-            line=15,
-            column=8,
-            kind="usage",
-        ),
-        Reference(
-            file_path="/minesweeper/minesweeper.py",
-            line=25,
-            column=12,
-            kind="usage",
-        ),
+        SymbolResponse(
+            id=symbol.id,
+            name=symbol.name,
+            kind=symbol.kind.value,
+            file_path=file.path,
+            start_line=symbol.start_line,
+            end_line=symbol.end_line,
+            signature=symbol.signature,
+            docstring=symbol.docstring,
+            parent_id=symbol.parent_id,
+        )
+        for symbol, file in rows
     ]
+
+
+@router.get("/{symbol_id}", response_model=SymbolResponse)
+async def get_symbol(
+    snapshot_id: str,
+    symbol_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get symbol details"""
+    result = await db.execute(
+        select(Symbol, File)
+        .join(File, Symbol.file_id == File.id)
+        .where(Symbol.id == symbol_id, Symbol.snapshot_id == snapshot_id)
+    )
+    row = result.one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Symbol not found")
+
+    symbol, file = row
+
+    return SymbolResponse(
+        id=symbol.id,
+        name=symbol.name,
+        kind=symbol.kind.value,
+        file_path=file.path,
+        start_line=symbol.start_line,
+        end_line=symbol.end_line,
+        signature=symbol.signature,
+        docstring=symbol.docstring,
+        parent_id=symbol.parent_id,
+    )
+
+
+@router.get("/{symbol_id}/references", response_model=List[ReferenceResponse])
+async def get_references(
+    snapshot_id: str,
+    symbol_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all references to a symbol"""
+    result = await db.execute(
+        select(Reference, Symbol, File)
+        .join(Symbol, Reference.from_symbol_id == Symbol.id)
+        .join(File, Symbol.file_id == File.id)
+        .where(
+            Reference.to_symbol_id == symbol_id,
+            Reference.snapshot_id == snapshot_id,
+        )
+    )
+    rows = result.all()
+
+    return [
+        ReferenceResponse(
+            file_path=file.path,
+            line=ref.line,
+            column=ref.column,
+            kind=ref.kind.value,
+        )
+        for ref, symbol, file in rows
+    ]
+
+
+@router.get("/kinds/list")
+async def list_symbol_kinds():
+    """List all available symbol kinds"""
+    return [kind.value for kind in SymbolKind]

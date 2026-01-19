@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronRight,
   ChevronDown,
@@ -12,91 +12,14 @@ import {
   FileJson,
   FileText,
   Image,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
 import clsx from "clsx";
+import { useAppStore } from "@/lib/store";
+import api, { FileTreeNode } from "@/lib/api";
 
-interface FileNode {
-  name: string;
-  type: "file" | "folder";
-  path: string;
-  children?: FileNode[];
-  language?: string;
-}
-
-// Demo file tree matching the screenshot structure
-const demoTree: FileNode[] = [
-  {
-    name: "DoubleClickMe.md",
-    type: "file",
-    path: "/DoubleClickMe.md",
-    language: "markdown",
-  },
-  {
-    name: "minesweeper",
-    type: "folder",
-    path: "/minesweeper",
-    children: [
-      {
-        name: "__pycache__",
-        type: "folder",
-        path: "/minesweeper/__pycache__",
-        children: [
-          {
-            name: "minesweeper.cpython-312.pyc",
-            type: "file",
-            path: "/minesweeper/__pycache__/minesweeper.cpython-312.pyc",
-          },
-        ],
-      },
-      {
-        name: "assets",
-        type: "folder",
-        path: "/minesweeper/assets",
-        children: [
-          {
-            name: "fonts",
-            type: "folder",
-            path: "/minesweeper/assets/fonts",
-            children: [
-              {
-                name: "OpenSans-Regular.ttf",
-                type: "file",
-                path: "/minesweeper/assets/fonts/OpenSans-Regular.ttf",
-              },
-            ],
-          },
-          {
-            name: "images",
-            type: "folder",
-            path: "/minesweeper/assets/images",
-            children: [
-              {
-                name: "flag.png",
-                type: "file",
-                path: "/minesweeper/assets/images/flag.png",
-                language: "image",
-              },
-              {
-                name: "mine.png",
-                type: "file",
-                path: "/minesweeper/assets/images/mine.png",
-                language: "image",
-              },
-            ],
-          },
-        ],
-      },
-      {
-        name: "minesweeper.py",
-        type: "file",
-        path: "/minesweeper/minesweeper.py",
-        language: "python",
-      },
-    ],
-  },
-];
-
-function getFileIcon(node: FileNode) {
+function getFileIcon(node: FileTreeNode) {
   if (node.type === "folder") return null;
 
   const ext = node.name.split(".").pop()?.toLowerCase();
@@ -112,6 +35,7 @@ function getFileIcon(node: FileNode) {
     case "json":
       return <FileJson className="w-4 h-4 text-amber-400" />;
     case "md":
+    case "mdx":
       return <FileText className="w-4 h-4 text-arb-text-dim" />;
     case "png":
     case "jpg":
@@ -119,26 +43,39 @@ function getFileIcon(node: FileNode) {
     case "gif":
     case "svg":
       return <Image className="w-4 h-4 text-pink-400" />;
+    case "rs":
+      return <FileCode className="w-4 h-4 text-orange-400" />;
+    case "go":
+      return <FileCode className="w-4 h-4 text-cyan-400" />;
     default:
       return <File className="w-4 h-4 text-arb-text-muted" />;
   }
 }
 
 interface TreeItemProps {
-  node: FileNode;
+  node: FileTreeNode;
   depth: number;
   selectedFile: string | null;
   onFileSelect: (path: string) => void;
+  expandedFolders: Set<string>;
+  toggleFolder: (path: string) => void;
 }
 
-function TreeItem({ node, depth, selectedFile, onFileSelect }: TreeItemProps) {
-  const [isOpen, setIsOpen] = useState(depth < 2);
+function TreeItem({
+  node,
+  depth,
+  selectedFile,
+  onFileSelect,
+  expandedFolders,
+  toggleFolder,
+}: TreeItemProps) {
   const isFolder = node.type === "folder";
   const isSelected = selectedFile === node.path;
+  const isOpen = expandedFolders.has(node.path);
 
   const handleClick = () => {
     if (isFolder) {
-      setIsOpen(!isOpen);
+      toggleFolder(node.path);
     } else {
       onFileSelect(node.path);
     }
@@ -194,6 +131,8 @@ function TreeItem({ node, depth, selectedFile, onFileSelect }: TreeItemProps) {
               depth={depth + 1}
               selectedFile={selectedFile}
               onFileSelect={onFileSelect}
+              expandedFolders={expandedFolders}
+              toggleFolder={toggleFolder}
             />
           ))}
         </div>
@@ -203,30 +142,111 @@ function TreeItem({ node, depth, selectedFile, onFileSelect }: TreeItemProps) {
 }
 
 interface FileTreeProps {
-  onFileSelect: (path: string) => void;
+  onFileSelect: (path: string | null) => void;
   selectedFile: string | null;
+  onImportClick: () => void;
 }
 
-export function FileTree({ onFileSelect, selectedFile }: FileTreeProps) {
+export function FileTree({ onFileSelect, selectedFile, onImportClick }: FileTreeProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { 
+    currentProject, 
+    currentSnapshot, 
+    fileTree, 
+    expandedFolders, 
+    toggleFolder,
+    setFileTree 
+  } = useAppStore();
+
+  // Auto-expand first two levels
+  useEffect(() => {
+    if (fileTree.length > 0 && expandedFolders.size === 0) {
+      fileTree.forEach((node) => {
+        if (node.type === "folder") {
+          toggleFolder(node.path);
+        }
+      });
+    }
+  }, [fileTree, expandedFolders.size, toggleFolder]);
+
+  const handleRefresh = async () => {
+    if (!currentSnapshot) return;
+    setIsRefreshing(true);
+    try {
+      const tree = await api.getFileTree(currentSnapshot.id);
+      setFileTree(tree);
+    } catch (err) {
+      console.error("Failed to refresh tree:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Filter tree based on search
+  const filterTree = (nodes: FileTreeNode[], query: string): FileTreeNode[] => {
+    if (!query) return nodes;
+    
+    return nodes.reduce<FileTreeNode[]>((acc, node) => {
+      if (node.name.toLowerCase().includes(query.toLowerCase())) {
+        acc.push(node);
+      } else if (node.children) {
+        const filteredChildren = filterTree(node.children, query);
+        if (filteredChildren.length > 0) {
+          acc.push({ ...node, children: filteredChildren });
+        }
+      }
+      return acc;
+    }, []);
+  };
+
+  const displayTree = filterTree(fileTree, searchQuery);
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-3 border-b border-arb-border">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-arb-text-dim uppercase tracking-wider">
-            Explorer
-          </h2>
-          <button className="text-xs px-2 py-1 rounded bg-arb-surface hover:bg-arb-hover border border-arb-border transition-colors">
-            + Import
-          </button>
+          <div>
+            <h2 className="text-sm font-medium text-arb-text-dim uppercase tracking-wider">
+              Explorer
+            </h2>
+            {currentProject && (
+              <p className="text-xs text-arb-text-muted truncate mt-0.5">
+                {currentProject.name}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {currentSnapshot && (
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1.5 rounded hover:bg-arb-surface transition-colors"
+                title="Refresh"
+              >
+                <RefreshCw
+                  className={clsx(
+                    "w-3.5 h-3.5 text-arb-text-dim",
+                    isRefreshing && "animate-spin"
+                  )}
+                />
+              </button>
+            )}
+            <button
+              onClick={onImportClick}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-arb-surface hover:bg-arb-hover border border-arb-border transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              Import
+            </button>
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-arb-text-muted" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-8 pl-8 pr-3 bg-arb-surface border border-arb-border rounded-md text-sm placeholder:text-arb-text-muted focus:outline-none focus:border-arb-accent/50 transition-all"
@@ -236,16 +256,45 @@ export function FileTree({ onFileSelect, selectedFile }: FileTreeProps) {
 
       {/* Tree */}
       <div className="flex-1 overflow-y-auto p-2">
-        {demoTree.map((node) => (
-          <TreeItem
-            key={node.path}
-            node={node}
-            depth={0}
-            selectedFile={selectedFile}
-            onFileSelect={onFileSelect}
-          />
-        ))}
+        {displayTree.length > 0 ? (
+          displayTree.map((node) => (
+            <TreeItem
+              key={node.path}
+              node={node}
+              depth={0}
+              selectedFile={selectedFile}
+              onFileSelect={onFileSelect}
+              expandedFolders={expandedFolders}
+              toggleFolder={toggleFolder}
+            />
+          ))
+        ) : currentProject ? (
+          <div className="text-center py-8 text-arb-text-muted text-sm">
+            {searchQuery ? "No matching files" : "No files indexed yet"}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-arb-text-muted text-sm mb-3">No project loaded</p>
+            <button
+              onClick={onImportClick}
+              className="flex items-center gap-2 mx-auto px-3 py-1.5 text-sm bg-arb-accent hover:bg-arb-accent/80 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Import Project
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Stats */}
+      {currentSnapshot && (
+        <div className="p-3 border-t border-arb-border text-xs text-arb-text-muted">
+          <div className="flex justify-between">
+            <span>{currentSnapshot.file_count} files</span>
+            <span>{currentSnapshot.symbol_count} symbols</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

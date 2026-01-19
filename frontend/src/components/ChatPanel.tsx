@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Send, Sparkles, Code, FileText, User } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Send, Sparkles, FileText, User, Loader2 } from "lucide-react";
 import clsx from "clsx";
+import { useAppStore } from "@/lib/store";
+import api from "@/lib/api";
 
 interface Message {
   id: string;
@@ -11,59 +13,96 @@ interface Message {
   citations?: { file: string; lines?: string }[];
 }
 
-const demoMessages: Message[] = [
-  {
-    id: "1",
-    role: "user",
-    content: "My friend sent me this really cool project! How does it work? 🎮",
-  },
-  {
-    id: "2",
-    role: "assistant",
-    content: `It looks like you're talking about a Minesweeper game! It's a classic game of logic and deduction. Here's a breakdown of how it works:
+const welcomeMessage: Message = {
+  id: "welcome",
+  role: "assistant",
+  content: `Welcome to CodeAtlas! 👋
 
-1. **Initialization:** The game starts by creating a grid of cells, with a hidden number of mines randomly placed within the grid.
+I can help you understand and navigate your codebase. Try asking me:
 
-2. **Player's Turn:** The player clicks on a cell.
+• "How does this project work?"
+• "Where is [function name] defined?"
+• "What files import [module]?"
+• "Explain the architecture"
 
-   • **If the cell contains a mine:** The game is over, and the player loses.
-   
-   • **If the cell is safe:** The cell is revealed, and the number of adjacent mines is displayed.`,
-    citations: [
-      { file: "minesweeper/minesweeper.py", lines: "1-45" },
-      { file: "minesweeper/assets/images/mine.png" },
-    ],
-  },
-];
+Import a project to get started, or explore the demo!`,
+  citations: [],
+};
 
 export function ChatPanel() {
-  const [messages, setMessages] = useState<Message[]>(demoMessages);
+  const { currentSnapshot, chatSessionId, setChatSessionId, setSelectedFile } = useAppStore();
+  const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
     if (!input.trim()) return;
 
-    const newMessage: Message = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input,
     };
-    setMessages([...messages, newMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setIsLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
+    try {
+      if (currentSnapshot) {
+        // Real API call
+        const response = await api.chat(currentSnapshot.id, input, chatSessionId || undefined);
+        setChatSessionId(response.session_id);
+
+        const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content:
-            "I'll analyze that for you. Let me look through the codebase...",
-          citations: [{ file: "minesweeper/minesweeper.py" }],
-        },
-      ]);
-    }, 1000);
+          content: response.message.content,
+          citations: response.message.citations,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+      } else {
+        // Demo response
+        setTimeout(() => {
+          const demoResponse: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `I'd love to help you with "${input}"!
+
+To analyze your codebase, please import a project first using the **Import** button in the sidebar.
+
+Once imported, I can:
+• Answer questions about your code
+• Explain how components work together
+• Help you find specific functions and files
+• Suggest improvements and refactors`,
+            citations: [],
+          };
+          setMessages((prev) => [...prev, demoResponse]);
+          setIsLoading(false);
+        }, 1000);
+        return;
+      }
+    } catch (err) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Sorry, I encountered an error: ${err instanceof Error ? err.message : "Unknown error"}. Please try again.`,
+        citations: [],
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCitationClick = (citation: { file: string; lines?: string }) => {
+    setSelectedFile(citation.file);
   };
 
   return (
@@ -117,6 +156,7 @@ export function ChatPanel() {
                     {msg.citations.map((cite, i) => (
                       <button
                         key={i}
+                        onClick={() => handleCitationClick(cite)}
                         className="flex items-center gap-1.5 px-2 py-1 rounded bg-arb-bg/50 border border-arb-border text-xs hover:border-arb-accent/50 transition-colors"
                       >
                         <FileText className="w-3 h-3 text-arb-accent" />
@@ -134,6 +174,16 @@ export function ChatPanel() {
             </div>
           </div>
         ))}
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-arb-text-dim animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Thinking...</span>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -149,17 +199,26 @@ export function ChatPanel() {
                   handleSend();
                 }
               }}
-              placeholder="Ask about the codebase..."
+              placeholder={
+                currentSnapshot
+                  ? "Ask about the codebase..."
+                  : "Import a project to start chatting..."
+              }
               rows={1}
-              className="w-full resize-none px-4 py-3 bg-arb-surface border border-arb-border rounded-xl text-sm placeholder:text-arb-text-muted focus:outline-none focus:border-arb-accent/50 focus:ring-1 focus:ring-arb-accent/20 transition-all"
+              disabled={isLoading}
+              className="w-full resize-none px-4 py-3 bg-arb-surface border border-arb-border rounded-xl text-sm placeholder:text-arb-text-muted focus:outline-none focus:border-arb-accent/50 focus:ring-1 focus:ring-arb-accent/20 transition-all disabled:opacity-50"
             />
           </div>
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isLoading}
             className="p-3 rounded-xl bg-arb-accent hover:bg-arb-accent/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-glow"
           >
-            <Send className="w-4 h-4 text-white" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            ) : (
+              <Send className="w-4 h-4 text-white" />
+            )}
           </button>
         </div>
       </div>

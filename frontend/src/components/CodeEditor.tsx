@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileCode, Copy, Download, ExternalLink } from "lucide-react";
+import { FileCode, Copy, Download, ExternalLink, Loader2, Check } from "lucide-react";
 import clsx from "clsx";
+import { useAppStore } from "@/lib/store";
 
-// Demo code matching the screenshot's Python minesweeper
+// Demo code for when no file is selected
 const demoCode = `import itertools
 import random
 
@@ -52,84 +53,64 @@ class Minesweeper():
                 else:
                     print("| ", end="")
             print("|")
-        print("--" * self.width + "-")
-
-    def is_mine(self, cell):
-        i, j = cell
-        return self.board[i][j]
-
-    def nearby_mines(self, cell):
-        """
-        Returns the number of mines that are
-        within one row and column of a given cell,
-        not including the cell itself.
-        """
-        count = 0
-        for i in range(cell[0] - 1, cell[0] + 2):
-            for j in range(cell[1] - 1, cell[1] + 2):
-                if (i, j) == cell:
-                    continue
-                if 0 <= i < self.height and 0 <= j < self.width:
-                    if self.board[i][j]:
-                        count += 1
-        return count
-
-    def won(self):
-        """
-        Checks if all mines have been flagged.
-        """
-        return self.mines_found == self.mines`;
+        print("--" * self.width + "-")`;
 
 interface CodeEditorProps {
   selectedFile: string | null;
 }
 
-// Simple syntax highlighting for Python
-function highlightPython(code: string): React.ReactNode[] {
+// Simple syntax highlighting
+function highlightCode(code: string, language?: string): React.ReactNode[] {
   const lines = code.split("\n");
-  const keywords = [
-    "import",
-    "from",
-    "class",
-    "def",
-    "return",
-    "if",
-    "else",
-    "elif",
-    "for",
-    "while",
-    "in",
-    "not",
-    "and",
-    "or",
-    "True",
-    "False",
-    "None",
-    "self",
-    "range",
-    "set",
-    "print",
-    "len",
-  ];
+  const keywords: Record<string, string[]> = {
+    python: [
+      "import", "from", "class", "def", "return", "if", "else", "elif",
+      "for", "while", "in", "not", "and", "or", "True", "False", "None",
+      "self", "range", "set", "print", "len", "try", "except", "finally",
+      "with", "as", "yield", "lambda", "pass", "break", "continue",
+    ],
+    javascript: [
+      "import", "export", "from", "const", "let", "var", "function",
+      "return", "if", "else", "for", "while", "class", "extends",
+      "new", "this", "async", "await", "try", "catch", "throw",
+      "true", "false", "null", "undefined",
+    ],
+    typescript: [
+      "import", "export", "from", "const", "let", "var", "function",
+      "return", "if", "else", "for", "while", "class", "extends",
+      "new", "this", "async", "await", "try", "catch", "throw",
+      "true", "false", "null", "undefined", "interface", "type",
+      "enum", "implements", "private", "public", "protected",
+    ],
+  };
+
+  const langKeywords = keywords[language || ""] || keywords.python;
 
   return lines.map((line, i) => {
     let highlighted = line;
 
     // Comments
-    if (line.includes("#")) {
-      const idx = line.indexOf("#");
-      const before = line.slice(0, idx);
-      const comment = line.slice(idx);
-      highlighted = before + `<span class="text-arb-text-muted">${comment}</span>`;
+    const commentPatterns = [
+      { pattern: /#.*$/, replacement: '<span class="text-arb-text-muted">$&</span>' },
+      { pattern: /\/\/.*$/, replacement: '<span class="text-arb-text-muted">$&</span>' },
+    ];
+
+    for (const { pattern, replacement } of commentPatterns) {
+      highlighted = highlighted.replace(pattern, replacement);
     }
 
-    // Strings (triple quotes)
-    if (line.includes('"""')) {
+    // Strings (triple quotes, single, double)
+    if (highlighted.includes('"""') || highlighted.includes("'''")) {
       highlighted = `<span class="text-emerald-400">${line}</span>`;
+    } else {
+      highlighted = highlighted.replace(
+        /(["'])(?:(?=(\\?))\2.)*?\1/g,
+        '<span class="text-emerald-400">$&</span>'
+      );
     }
 
     // Keywords
-    keywords.forEach((kw) => {
+    langKeywords.forEach((kw) => {
       const regex = new RegExp(`\\b${kw}\\b`, "g");
       highlighted = highlighted.replace(
         regex,
@@ -147,6 +128,10 @@ function highlightPython(code: string): React.ReactNode[] {
     highlighted = highlighted.replace(
       /def\s+(\w+)/g,
       'def <span class="text-blue-400">$1</span>'
+    );
+    highlighted = highlighted.replace(
+      /function\s+(\w+)/g,
+      'function <span class="text-blue-400">$1</span>'
     );
 
     // Class definitions
@@ -170,8 +155,18 @@ function highlightPython(code: string): React.ReactNode[] {
 }
 
 export function CodeEditor({ selectedFile }: CodeEditorProps) {
-  const [code, setCode] = useState(demoCode);
+  const { fileContent, isLoadingFile, currentSnapshot } = useAppStore();
+  const [copied, setCopied] = useState(false);
+
+  const code = fileContent?.content || (!currentSnapshot ? demoCode : "");
+  const language = fileContent?.language || "python";
   const fileName = selectedFile || "minesweeper.py";
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -179,17 +174,38 @@ export function CodeEditor({ selectedFile }: CodeEditorProps) {
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-arb-border bg-arb-surface/50">
         <div className="flex items-center gap-2">
           <FileCode className="w-4 h-4 text-yellow-400" />
-          <span className="text-sm font-medium">{fileName.split("/").pop()}</span>
-          <span className="text-xs text-arb-text-muted">{fileName}</span>
+          <span className="text-sm font-medium">
+            {fileName.split("/").pop()}
+          </span>
+          <span className="text-xs text-arb-text-muted truncate max-w-[200px]">
+            {fileName}
+          </span>
         </div>
         <div className="flex items-center gap-1">
-          <button className="p-1.5 rounded hover:bg-arb-hover transition-colors" title="Copy">
-            <Copy className="w-3.5 h-3.5 text-arb-text-dim" />
+          {isLoadingFile && (
+            <Loader2 className="w-4 h-4 text-arb-accent animate-spin mr-2" />
+          )}
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded hover:bg-arb-hover transition-colors"
+            title="Copy"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-arb-success" />
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-arb-text-dim" />
+            )}
           </button>
-          <button className="p-1.5 rounded hover:bg-arb-hover transition-colors" title="Download">
+          <button
+            className="p-1.5 rounded hover:bg-arb-hover transition-colors"
+            title="Download"
+          >
             <Download className="w-3.5 h-3.5 text-arb-text-dim" />
           </button>
-          <button className="p-1.5 rounded hover:bg-arb-hover transition-colors" title="Open external">
+          <button
+            className="p-1.5 rounded hover:bg-arb-hover transition-colors"
+            title="Open external"
+          >
             <ExternalLink className="w-3.5 h-3.5 text-arb-text-dim" />
           </button>
         </div>
@@ -197,8 +213,26 @@ export function CodeEditor({ selectedFile }: CodeEditorProps) {
 
       {/* Code Content */}
       <div className="flex-1 overflow-auto p-4 font-mono text-sm leading-6">
-        <div className="table w-full">{highlightPython(code)}</div>
+        {code ? (
+          <div className="table w-full">{highlightCode(code, language)}</div>
+        ) : isLoadingFile ? (
+          <div className="flex items-center justify-center h-full text-arb-text-muted">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full text-arb-text-muted">
+            Select a file to view its contents
+          </div>
+        )}
       </div>
+
+      {/* Status bar */}
+      {fileContent && (
+        <div className="flex-shrink-0 px-4 py-1.5 border-t border-arb-border bg-arb-surface/30 text-xs text-arb-text-muted flex items-center justify-between">
+          <span>{language || "plain text"}</span>
+          <span>{fileContent.line_count} lines</span>
+        </div>
+      )}
     </div>
   );
 }

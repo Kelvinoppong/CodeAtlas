@@ -1,25 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileTree } from "@/components/FileTree";
 import { CenterCanvas } from "@/components/CenterCanvas";
 import { CodeEditor } from "@/components/CodeEditor";
 import { Header } from "@/components/Header";
+import { ProjectImport } from "@/components/ProjectImport";
+import { useAppStore } from "@/lib/store";
+import api from "@/lib/api";
 
 export default function Home() {
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "graph" | "timeline">("graph");
+  const [showImport, setShowImport] = useState(false);
+  const {
+    currentProject,
+    currentSnapshot,
+    selectedFile,
+    activeTab,
+    setSelectedFile,
+    setActiveTab,
+    setCurrentProject,
+    setCurrentSnapshot,
+    setFileTree,
+    setFileContent,
+    setIsLoadingFile,
+  } = useAppStore();
+
+  // Load file content when selected
+  useEffect(() => {
+    if (selectedFile && currentSnapshot) {
+      setIsLoadingFile(true);
+      api
+        .getFileContent(currentSnapshot.id, selectedFile)
+        .then((content) => {
+          setFileContent(content);
+        })
+        .catch((err) => {
+          console.error("Failed to load file:", err);
+          setFileContent(null);
+        })
+        .finally(() => {
+          setIsLoadingFile(false);
+        });
+    }
+  }, [selectedFile, currentSnapshot, setFileContent, setIsLoadingFile]);
+
+  // Check for existing projects on mount
+  useEffect(() => {
+    api
+      .listProjects()
+      .then(async (projects) => {
+        if (projects.length > 0) {
+          const project = projects[0];
+          setCurrentProject(project);
+
+          // Get latest snapshot
+          if (project.snapshot_count > 0) {
+            // We need to get the snapshot - for now, create new one
+            // In a full implementation, we'd have an API to list snapshots
+          }
+        }
+      })
+      .catch((err) => {
+        console.log("Could not connect to API:", err.message);
+      });
+  }, [setCurrentProject, setCurrentSnapshot, setFileTree]);
+
+  const handleImportSuccess = () => {
+    setShowImport(false);
+  };
 
   return (
     <div className="h-screen w-screen flex flex-col bg-arb-bg overflow-hidden">
       {/* Top Header */}
-      <Header />
+      <Header onImportClick={() => setShowImport(true)} />
 
       {/* Main 3-Pane Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - File Tree */}
         <aside className="w-72 flex-shrink-0 border-r border-arb-border bg-arb-panel flex flex-col animate-fade-in">
-          <FileTree onFileSelect={setSelectedFile} selectedFile={selectedFile} />
+          <FileTree
+            onFileSelect={setSelectedFile}
+            selectedFile={selectedFile}
+            onImportClick={() => setShowImport(true)}
+          />
         </aside>
 
         {/* Center Panel - Graph/Chat Canvas */}
@@ -32,6 +95,14 @@ export default function Home() {
           <CodeEditor selectedFile={selectedFile} />
         </aside>
       </div>
+
+      {/* Import Modal */}
+      {showImport && (
+        <ProjectImport
+          onClose={() => setShowImport(false)}
+          onSuccess={handleImportSuccess}
+        />
+      )}
     </div>
   );
 }

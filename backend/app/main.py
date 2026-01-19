@@ -2,16 +2,39 @@
 CodeAtlas API - Code Analysis Platform Backend
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import projects, snapshots, files, symbols, ai, changesets
 from app.core.config import settings
+from app.core.database import init_db, close_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events"""
+    # Startup
+    print("🚀 Starting CodeAtlas API...")
+    try:
+        await init_db()
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"⚠️ Database initialization failed: {e}")
+        print("   Make sure PostgreSQL is running (docker-compose up -d)")
+    
+    yield
+    
+    # Shutdown
+    print("👋 Shutting down CodeAtlas API...")
+    await close_db()
+
 
 app = FastAPI(
     title="CodeAtlas API",
     description="Code analysis platform providing codebase context, AI assistance, and safe file modifications",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS for frontend
@@ -30,6 +53,7 @@ async def root():
         "name": "CodeAtlas API",
         "version": "0.1.0",
         "status": "running",
+        "docs": "/docs",
     }
 
 
