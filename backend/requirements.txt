@@ -1,0 +1,30 @@
+# Core API
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+pgvector==0.3.6
+
+# Code Analysis
+tree-sitter==0.24.4
+tree-sitter-python==0.23.6
+tree-sitter-javascript==0.23.1
+tree-sitter-typescript==0.23.2
+
+# AI/Embeddings
+openai==1.58.1
+tiktoken==0.8.0
+numpy==2.2.1
+
+# Utilities
+python-dotenv==1.0.1
+httpx==0.28.1
+redis==5.2.1
+gitpython==3.1.44
+pathspec==0.12.1

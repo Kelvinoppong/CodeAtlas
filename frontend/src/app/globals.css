@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Custom scrollbar - sleek dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+/* Selection */
+::selection {
+  background: rgba(167, 139, 250, 0.3);
+  color: #e4e4eb;
+}
+
+/* Focus rings */
+*:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+/* Panel transitions */
+.panel {
+  @apply transition-all duration-200 ease-out;
+}
+
+/* File tree item hover */
+.tree-item {
+  @apply transition-colors duration-150;
+}
+
+.tree-item:hover {
+  @apply bg-arb-hover;
+}
+
+/* Graph node styles */
+.graph-node {
+  @apply transition-transform duration-200;
+}
+
+.graph-node:hover {
+  transform: scale(1.05);
+}
+
+/* Glow effect for active elements */
+.glow-active {
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.4);
+}
+
+/* Subtle gradient backgrounds */
+.bg-gradient-dark {
+  background: linear-gradient(
+    135deg,
+    rgba(18, 18, 26, 1) 0%,
+    rgba(10, 10, 15, 1) 100%
+  );
+}
+
+/* Diamond/rhombus shape for graph nodes */
+.diamond {
+  transform: rotate(45deg);
+}
+
+.diamond-content {
+  transform: rotate(-45deg);
+}
+
+/* Animated border gradient */
+@keyframes borderGlow {
+  0%,
+  100% {
+    border-color: rgba(167, 139, 250, 0.3);
+  }
+  50% {
+    border-color: rgba(167, 139, 250, 0.6);
+  }
+}
+
+.animate-border-glow {
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+/* Code highlighting enhancement */
+.code-line-highlight {
+  background: rgba(167, 139, 250, 0.1);
+  border-left: 3px solid #a78bfa;
+}
+
+/* Tab indicator */
+.tab-active {
+  position: relative;
+}
+
+.tab-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #a78bfa, #c4b5fd);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Pill/tag styles matching screenshot */
+.tech-pill {
+  @apply px-4 py-2 rounded-full bg-arb-surface border border-arb-border text-sm font-medium text-arb-text transition-all duration-200;
+}
+
+.tech-pill:hover {
+  @apply bg-arb-hover border-arb-accent/50;
+}
