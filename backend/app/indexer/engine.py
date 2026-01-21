@@ -42,6 +42,7 @@ class IndexingEngine:
         self,
         project_id: str,
         git_commit: Optional[str] = None,
+        git_branch: Optional[str] = None,
     ) -> Snapshot:
         """
         Index a project and create a new snapshot.
@@ -49,6 +50,7 @@ class IndexingEngine:
         Args:
             project_id: The project to index
             git_commit: Optional git commit hash
+            git_branch: Optional git branch name
 
         Returns:
             The created Snapshot
@@ -73,6 +75,7 @@ class IndexingEngine:
         snapshot = Snapshot(
             project_id=project_id,
             git_commit=git_commit,
+            git_branch=git_branch,
             status=SnapshotStatus.INDEXING,
             progress=0.0,
         )

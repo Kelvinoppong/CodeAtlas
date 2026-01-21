@@ -55,8 +55,20 @@ export default function Home() {
 
           // Get latest snapshot
           if (project.snapshot_count > 0) {
-            // We need to get the snapshot - for now, create new one
-            // In a full implementation, we'd have an API to list snapshots
+            try {
+              const snapshots = await api.listProjectSnapshots(project.id);
+              if (snapshots.length > 0) {
+                const latestSnapshot = snapshots[0];
+                const snapshotDetails = await api.getSnapshotStatus(latestSnapshot.snapshot_id);
+                setCurrentSnapshot(snapshotDetails);
+                
+                // Load file tree
+                const tree = await api.getFileTree(latestSnapshot.snapshot_id);
+                setFileTree(tree);
+              }
+            } catch (err) {
+              console.error("Failed to load snapshots:", err);
+            }
           }
         }
       })

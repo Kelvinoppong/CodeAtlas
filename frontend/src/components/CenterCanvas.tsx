@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { MessageSquare, GitBranch, Clock, Volume2, Send } from "lucide-react";
+import { MessageSquare, GitBranch, Clock, Volume2, FileCode2 } from "lucide-react";
 import clsx from "clsx";
 import { GraphViewer } from "./GraphViewer";
 import { ChatPanel } from "./ChatPanel";
+import { ChangeSetPanel } from "./ChangeSetPanel";
 
-type TabType = "chat" | "graph" | "timeline";
+type TabType = "chat" | "graph" | "timeline" | "changes";
 
 interface CenterCanvasProps {
   activeTab: TabType;
@@ -16,6 +16,7 @@ interface CenterCanvasProps {
 const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
   { id: "chat", label: "Chat", icon: <MessageSquare className="w-4 h-4" /> },
   { id: "graph", label: "Graph", icon: <GitBranch className="w-4 h-4" /> },
+  { id: "changes", label: "Changes", icon: <FileCode2 className="w-4 h-4" /> },
   { id: "timeline", label: "Timeline", icon: <Clock className="w-4 h-4" /> },
 ];
 
@@ -54,6 +55,7 @@ export function CenterCanvas({ activeTab, onTabChange }: CenterCanvasProps) {
       <div className="flex-1 overflow-hidden">
         {activeTab === "graph" && <GraphViewer />}
         {activeTab === "chat" && <ChatPanel />}
+        {activeTab === "changes" && <ChangeSetPanel />}
         {activeTab === "timeline" && (
           <div className="flex items-center justify-center h-full text-arb-text-muted">
             <div className="text-center">
