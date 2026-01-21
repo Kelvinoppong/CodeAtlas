@@ -1,19 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Download, Settings, Sparkles, FolderOpen, X } from "lucide-react";
+import { Search, Download, Settings, Sparkles, FolderOpen } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useAuthStore } from "@/lib/authStore";
 import api from "@/lib/api";
+import { UserMenu } from "./UserMenu";
+import { PresenceIndicator } from "./PresenceIndicator";
 
 interface HeaderProps {
   onImportClick: () => void;
+  onLoginClick: () => void;
 }
 
-export function Header({ onImportClick }: HeaderProps) {
+export function Header({ onImportClick, onLoginClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const { currentProject, currentSnapshot, setSelectedFile } = useAppStore();
+  const { isAuthenticated } = useAuthStore();
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -107,21 +112,33 @@ export function Header({ onImportClick }: HeaderProps) {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onImportClick}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all"
-        >
-          <FolderOpen className="w-4 h-4" />
-          <span>Import</span>
-        </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all">
-          <Download className="w-4 h-4" />
-          <span>Export</span>
-        </button>
-        <button className="p-2 rounded-lg hover:bg-arb-surface transition-colors">
-          <Settings className="w-5 h-5 text-arb-text-dim" />
-        </button>
+      <div className="flex items-center gap-3">
+        {/* Presence indicator */}
+        {currentProject && isAuthenticated && (
+          <PresenceIndicator projectId={currentProject.id} />
+        )}
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onImportClick}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all"
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">Import</span>
+          </button>
+          <button className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all">
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <button className="p-2 rounded-lg hover:bg-arb-surface transition-colors">
+            <Settings className="w-5 h-5 text-arb-text-dim" />
+          </button>
+        </div>
+        
+        {/* User menu / login */}
+        <div className="border-l border-arb-border pl-3 ml-1">
+          <UserMenu onLoginClick={onLoginClick} />
+        </div>
       </div>
     </header>
   );

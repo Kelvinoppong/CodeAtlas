@@ -6,6 +6,8 @@ from app.models.file import File
 from app.models.symbol import Symbol, Reference
 from app.models.embedding import EmbeddingChunk
 from app.models.changeset import ChangeSet, Patch
+from app.models.user import User, ProjectMembership, ROLE_PERMISSIONS, has_permission
+from app.models.audit import AuditLog, AuditAction
 
 __all__ = [
     "Base",
@@ -17,4 +19,10 @@ __all__ = [
     "EmbeddingChunk",
     "ChangeSet",
     "Patch",
+    "User",
+    "ProjectMembership",
+    "ROLE_PERMISSIONS",
+    "has_permission",
+    "AuditLog",
+    "AuditAction",
 ]

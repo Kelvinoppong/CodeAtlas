@@ -253,10 +253,14 @@ CodeAtlas/
 │   │   │   ├── CodeEditor.tsx       # Syntax-highlighted viewer
 │   │   │   ├── ChangeSetPanel.tsx   # ChangeSet management UI
 │   │   │   ├── DiffViewer.tsx       # Unified diff display
-│   │   │   └── ProjectImport.tsx    # Import modal
+│   │   │   ├── ProjectImport.tsx    # Import modal
+│   │   │   ├── AuthModal.tsx        # Login/register modal
+│   │   │   ├── UserMenu.tsx         # User dropdown menu
+│   │   │   └── PresenceIndicator.tsx # Real-time presence
 │   │   └── lib/                     # Utilities
 │   │       ├── api.ts               # API client + types
-│   │       └── store.ts             # Zustand state
+│   │       ├── store.ts             # Zustand state
+│   │       └── authStore.ts         # Authentication state
 │   ├── package.json
 │   └── tailwind.config.ts
 │
@@ -285,7 +289,10 @@ CodeAtlas/
 │   │   │   └── engine.py            # Pipeline orchestration
 │   │   ├── services/                # Business logic
 │   │   │   ├── git_service.py       # Git operations
-│   │   │   └── impact_analyzer.py   # Dependency analysis
+│   │   │   ├── impact_analyzer.py   # Dependency analysis
+│   │   │   ├── auth_service.py      # JWT authentication
+│   │   │   ├── audit_service.py     # Action logging
+│   │   │   └── incremental_indexer.py # Smart re-indexing
 │   │   └── main.py                  # FastAPI entry point
 │   └── requirements.txt
 │
@@ -298,6 +305,18 @@ CodeAtlas/
 ---
 
 ## 📡 API Reference
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Register new user |
+| `POST` | `/auth/login` | Login with credentials |
+| `POST` | `/auth/logout` | Logout current user |
+| `POST` | `/auth/refresh` | Refresh access token |
+| `GET` | `/auth/me` | Get current user |
+| `PUT` | `/auth/me` | Update profile |
+| `POST` | `/auth/change-password` | Change password |
 
 ### Projects
 
@@ -361,6 +380,21 @@ CodeAtlas/
 | `POST` | `/changesets/{id}/commit` | Create git commit |
 | `DELETE` | `/changesets/{id}` | Delete proposed changeset |
 
+### Real-time (WebSocket)
+
+| Endpoint | Description |
+|----------|-------------|
+| `WS /ws/{project_id}?token=...` | Real-time collaboration WebSocket |
+| `GET /presence/{project_id}` | Get current online users (REST fallback) |
+
+**WebSocket Message Types:**
+- `cursor_move` - Update cursor position
+- `file_open` - Notify file opened
+- `file_close` - Notify file closed
+- `chat` - Send chat message
+- `presence_update` - User presence changed
+- `user_joined` / `user_left` - User connected/disconnected
+
 ---
 
 ## 🗺️ Roadmap
@@ -390,12 +424,12 @@ CodeAtlas/
 - [x] Branch-aware snapshots
 - [x] Impact analysis ("what breaks if I change X?")
 
-### Phase 3 — Collaboration & Scale ⏳
-- [ ] Multi-user projects
-- [ ] Real-time collaboration (PeerJS/WebRTC)
-- [ ] Incremental indexing
-- [ ] Large repo optimizations
-- [ ] Enterprise RBAC & audit logs
+### Phase 3 — Collaboration & Scale ✅
+- [x] Multi-user projects (JWT authentication, project membership)
+- [x] Real-time collaboration (WebSocket presence, live cursors)
+- [x] Incremental indexing (only re-index changed files)
+- [x] Large repo optimizations (pagination, caching)
+- [x] Enterprise RBAC & audit logs (role-based permissions, action logging)
 
 ---
 

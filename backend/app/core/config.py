@@ -2,7 +2,8 @@
 Application configuration
 """
 
-from typing import List
+import secrets
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 
 
@@ -10,6 +11,11 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "CodeAtlas"
     DEBUG: bool = True
+    
+    # Security
+    SECRET_KEY: str = secrets.token_urlsafe(32)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/codeatlas"
@@ -24,8 +30,12 @@ class Settings(BaseSettings):
     # Storage
     PROJECTS_DIR: str = "./projects"
     
-    # Redis (optional, for task queue)
+    # Redis (optional, for task queue and caching)
     REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # Cache settings
+    CACHE_TTL: int = 300  # Default cache TTL in seconds
+    CACHE_MAX_SIZE: int = 1000  # Max cache entries
     
     class Config:
         env_file = ".env"
