@@ -60,6 +60,26 @@ Tree-sitter powered parsing for Python, JavaScript, and TypeScript with fallback
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 🔄 Safe Code Modifications
+Apply AI-proposed changes with confidence — full diff preview, one-click apply, and instant rollback if anything goes wrong.
+
+### 📊 Impact Analysis
+Before you change anything, see exactly what breaks. Trace dependencies across files and get risk assessments.
+
+</td>
+<td width="50%">
+
+### 🌿 Git Integration
+Branch-aware snapshots, commit history, and seamless git workflow integration. Create commits directly from applied changes.
+
+### 🛡️ ChangeSet Management
+Review, apply, rollback, and commit code changes with full audit trail. Never lose your original code.
+
+</td>
+</tr>
 </table>
 
 ---
@@ -227,10 +247,12 @@ CodeAtlas/
 │   │   ├── components/              # React components
 │   │   │   ├── Header.tsx           # Nav bar + symbol search
 │   │   │   ├── FileTree.tsx         # Left panel - file explorer
-│   │   │   ├── CenterCanvas.tsx     # Tab container
+│   │   │   ├── CenterCanvas.tsx     # Tab container (Chat/Graph/Changes)
 │   │   │   ├── GraphViewer.tsx      # Dependency graph
 │   │   │   ├── ChatPanel.tsx        # AI chat interface
 │   │   │   ├── CodeEditor.tsx       # Syntax-highlighted viewer
+│   │   │   ├── ChangeSetPanel.tsx   # ChangeSet management UI
+│   │   │   ├── DiffViewer.tsx       # Unified diff display
 │   │   │   └── ProjectImport.tsx    # Import modal
 │   │   └── lib/                     # Utilities
 │   │       ├── api.ts               # API client + types
@@ -261,6 +283,9 @@ CodeAtlas/
 │   │   │   ├── scanner.py           # File discovery
 │   │   │   ├── parser.py            # Tree-sitter + regex
 │   │   │   └── engine.py            # Pipeline orchestration
+│   │   ├── services/                # Business logic
+│   │   │   ├── git_service.py       # Git operations
+│   │   │   └── impact_analyzer.py   # Dependency analysis
 │   │   └── main.py                  # FastAPI entry point
 │   └── requirements.txt
 │
@@ -282,8 +307,10 @@ CodeAtlas/
 | `POST` | `/projects/import` | Import a new repository |
 | `GET` | `/projects/{id}` | Get project details |
 | `DELETE` | `/projects/{id}` | Delete project |
+| `GET` | `/projects/{id}/snapshots` | List project snapshots |
 | `POST` | `/projects/{id}/snapshots` | Start async indexing |
 | `POST` | `/projects/{id}/snapshots/sync` | Index synchronously |
+| `POST` | `/projects/{id}/snapshots/branch` | Index specific git branch |
 
 ### Snapshots & Files
 
@@ -294,6 +321,15 @@ CodeAtlas/
 | `GET` | `/snapshots/{id}/files?path=...` | Get file content |
 | `GET` | `/snapshots/{id}/files/list` | List all files |
 | `GET` | `/snapshots/{id}/graphs/deps` | Get dependency graph |
+| `POST` | `/snapshots/{id}/impact` | Analyze change impact |
+
+### Git
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/snapshots/{id}/git/status` | Get working directory status |
+| `GET` | `/snapshots/{id}/git/branches` | List all branches |
+| `GET` | `/snapshots/{id}/git/commits` | Get commit history |
 
 ### Symbols
 
@@ -318,10 +354,12 @@ CodeAtlas/
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/changesets` | List all changesets |
+| `POST` | `/changesets` | Create new changeset with patches |
 | `GET` | `/changesets/{id}` | Get changeset details |
-| `POST` | `/changesets/{id}/apply` | Apply changes |
-| `POST` | `/changesets/{id}/rollback` | Undo changes |
+| `POST` | `/changesets/{id}/apply` | Apply changes to files |
+| `POST` | `/changesets/{id}/rollback` | Restore original files |
 | `POST` | `/changesets/{id}/commit` | Create git commit |
+| `DELETE` | `/changesets/{id}` | Delete proposed changeset |
 
 ---
 
@@ -344,15 +382,15 @@ CodeAtlas/
 - [x] Dependency graph visualization
 - [x] AI chat interface
 
-### Phase 2 — Safe Edits & Git ⏳
-- [ ] ChangeSet diff viewer
-- [ ] Apply/rollback functionality  
-- [ ] Multi-file refactoring
-- [ ] Git commit integration
-- [ ] Branch-aware snapshots
-- [ ] Impact analysis ("what breaks if I change X?")
+### Phase 2 — Safe Edits & Git ✅
+- [x] ChangeSet diff viewer
+- [x] Apply/rollback functionality  
+- [x] Multi-file refactoring
+- [x] Git commit integration
+- [x] Branch-aware snapshots
+- [x] Impact analysis ("what breaks if I change X?")
 
-### Phase 3 — Collaboration & Scale
+### Phase 3 — Collaboration & Scale ⏳
 - [ ] Multi-user projects
 - [ ] Real-time collaboration (PeerJS/WebRTC)
 - [ ] Incremental indexing
