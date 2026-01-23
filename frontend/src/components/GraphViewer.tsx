@@ -138,42 +138,62 @@ const demoEdges: Edge[] = [
 }));
 
 function layoutNodes(graphNodes: GraphNode[]): Node[] {
-  // Simple hierarchical layout
-  const levels: Map<string, number> = new Map();
-  const nodeMap = new Map(graphNodes.map((n) => [n.id, n]));
+  // Group nodes by type into levels
+  const nodesByLevel: Map<number, GraphNode[]> = new Map();
   
-  // Calculate levels (simplified)
-  graphNodes.forEach((node, i) => {
-    if (node.type === "file") {
-      levels.set(node.id, 0);
-    } else if (node.type === "class") {
-      levels.set(node.id, 1);
-    } else {
-      levels.set(node.id, 2);
-    }
+  graphNodes.forEach((node) => {
+    let level = 2; // default
+    if (node.type === "file") level = 0;
+    else if (node.type === "class") level = 1;
+    else if (node.type === "function" || node.type === "method") level = 2;
+    
+    const existing = nodesByLevel.get(level) || [];
+    existing.push(node);
+    nodesByLevel.set(level, existing);
   });
 
-  // Position nodes
-  const levelCounts: Map<number, number> = new Map();
+  const results: Node[] = [];
+  const nodeSpacing = 120;
+  const levelSpacing = 100;
+  const maxNodesPerRow = 8; // Wrap to new row after this many
   
-  return graphNodes.map((node) => {
-    const level = levels.get(node.id) || 0;
-    const count = levelCounts.get(level) || 0;
-    levelCounts.set(level, count + 1);
-
-    return {
-      id: node.id,
-      type: graphNodes.length > 20 ? "standard" : "diamond",
-      position: {
-        x: count * 100 + 50,
-        y: level * 100 + 50,
-      },
-      data: {
-        label: node.label,
-        type: node.type,
-      },
-    };
+  // Sort levels and position nodes
+  const sortedLevels = Array.from(nodesByLevel.keys()).sort((a, b) => a - b);
+  let currentY = 50;
+  
+  sortedLevels.forEach((level) => {
+    const nodesAtLevel = nodesByLevel.get(level) || [];
+    const numNodes = nodesAtLevel.length;
+    const numRows = Math.ceil(numNodes / maxNodesPerRow);
+    
+    nodesAtLevel.forEach((node, index) => {
+      const row = Math.floor(index / maxNodesPerRow);
+      const col = index % maxNodesPerRow;
+      const nodesInThisRow = Math.min(maxNodesPerRow, numNodes - row * maxNodesPerRow);
+      
+      // Center each row
+      const rowWidth = (nodesInThisRow - 1) * nodeSpacing;
+      const startX = -rowWidth / 2;
+      
+      results.push({
+        id: node.id,
+        type: graphNodes.length > 30 ? "standard" : "diamond",
+        position: {
+          x: startX + col * nodeSpacing,
+          y: currentY + row * 80,
+        },
+        data: {
+          label: node.label,
+          type: node.type,
+          path: node.path,
+        },
+      });
+    });
+    
+    currentY += numRows * 80 + levelSpacing;
   });
+
+  return results;
 }
 
 function layoutEdges(graphEdges: GraphEdge[]): Edge[] {
@@ -244,7 +264,7 @@ export function GraphViewer() {
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.5 }}
         defaultEdgeOptions={{
           style: { stroke: "#a78bfa", strokeWidth: 2 },
         }}
