@@ -4,7 +4,7 @@ User model - authentication and identity
 
 from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, Text
+from sqlalchemy import String, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 
@@ -69,11 +69,13 @@ class ProjectMembership(Base, TimestampMixin):
     
     user_id: Mapped[str] = mapped_column(
         String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     project_id: Mapped[str] = mapped_column(
         String(36),
+        ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

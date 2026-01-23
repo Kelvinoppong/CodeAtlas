@@ -3,9 +3,8 @@ EmbeddingChunk model - for vector similarity search
 """
 
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Integer, Text, ForeignKey
+from sqlalchemy import String, Integer, Text, ForeignKey, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from pgvector.sqlalchemy import Vector
 import uuid
 
 from app.models.base import Base, TimestampMixin
@@ -47,8 +46,9 @@ class EmbeddingChunk(Base, TimestampMixin):
     # Token count (for context window management)
     token_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     
-    # Embedding vector (1536 dimensions for OpenAI, 768 for others)
-    embedding = mapped_column(Vector(1536), nullable=True)
+    # Embedding vector stored as binary (install pgvector for vector search)
+    # Format: numpy array serialized with np.tobytes()
+    embedding: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
     
     # Optional: symbol this chunk is primarily about
     primary_symbol_id: Mapped[Optional[str]] = mapped_column(

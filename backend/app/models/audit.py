@@ -4,7 +4,7 @@ Audit Log model - track all actions for compliance and debugging
 
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, Text, DateTime, JSON, Index
+from sqlalchemy import String, Text, DateTime, JSON, Index, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
 
@@ -34,6 +34,7 @@ class AuditLog(Base):
     # Who performed the action
     user_id: Mapped[Optional[str]] = mapped_column(
         String(36),
+        ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
