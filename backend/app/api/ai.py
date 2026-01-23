@@ -2,11 +2,21 @@
 AI chat and explanation endpoints
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 import uuid
+import httpx
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.core.database import get_db
+from app.core.config import settings
+from app.models.snapshot import Snapshot
+from app.models.file import File
+from app.models.symbol import Symbol
 
 router = APIRouter()
 
@@ -20,6 +30,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = None
+    context_file: Optional[str] = None  # Optional file to include as context
 
 
 class ChatResponse(BaseModel):
@@ -40,7 +51,7 @@ class ExplainResponse(BaseModel):
 
 class ProposeChangesRequest(BaseModel):
     instruction: str
-    files: Optional[List[str]] = None  # Limit to specific files
+    files: Optional[List[str]] = None
 
 
 class ChangeProposal(BaseModel):
@@ -51,68 +62,210 @@ class ChangeProposal(BaseModel):
     impacted_files: List[str]
 
 
+async def call_gemini(prompt: str, context: str = "") -> str:
+    """Call Gemini API for chat completion"""
+    if not settings.GEMINI_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API key not configured")
+    
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={settings.GEMINI_API_KEY}"
+    
+    full_prompt = prompt
+    if context:
+        full_prompt = f"""You are CodeAtlas, an AI assistant that helps developers understand and navigate codebases.
+
+Here is some context about the codebase:
+{context}
+
+User question: {prompt}
+
+Please provide a helpful, concise response. If referencing code, mention the file paths."""
+
+    payload = {
+        "contents": [{
+            "parts": [{"text": full_prompt}]
+        }],
+        "generationConfig": {
+            "temperature": 0.7,
+            "maxOutputTokens": 2048,
+        }
+    }
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(url, json=payload)
+        
+        if response.status_code != 200:
+            error_detail = response.text
+            raise HTTPException(status_code=500, detail=f"Gemini API error: {error_detail}")
+        
+        data = response.json()
+        
+        try:
+            return data["candidates"][0]["content"]["parts"][0]["text"]
+        except (KeyError, IndexError) as e:
+            raise HTTPException(status_code=500, detail=f"Unexpected Gemini response format: {data}")
+
+
+async def get_codebase_context(db: AsyncSession, snapshot_id: str, file_path: Optional[str] = None) -> str:
+    """Get relevant codebase context for AI"""
+    # Get snapshot
+    result = await db.execute(select(Snapshot).where(Snapshot.id == snapshot_id))
+    snapshot = result.scalar_one_or_none()
+    
+    if not snapshot:
+        return ""
+    
+    context_parts = [f"Project snapshot with {snapshot.file_count} files and {snapshot.symbol_count} symbols."]
+    
+    # If a specific file is requested, include its content
+    if file_path:
+        result = await db.execute(
+            select(File).where(
+                File.snapshot_id == snapshot_id,
+                File.path == file_path
+            )
+        )
+        file = result.scalar_one_or_none()
+        if file and file.content:
+            context_parts.append(f"\nFile: {file.path}\n```{file.language or ''}\n{file.content[:4000]}\n```")
+    
+    # Get list of files
+    result = await db.execute(
+        select(File.path, File.language).where(File.snapshot_id == snapshot_id).limit(50)
+    )
+    files = result.all()
+    if files:
+        file_list = ", ".join([f.path for f in files[:20]])
+        context_parts.append(f"\nProject files: {file_list}")
+    
+    # Get key symbols
+    result = await db.execute(
+        select(Symbol.name, Symbol.kind, Symbol.qualified_name)
+        .where(Symbol.snapshot_id == snapshot_id)
+        .where(Symbol.kind.in_(["class", "function"]))
+        .limit(30)
+    )
+    symbols = result.all()
+    if symbols:
+        symbol_list = ", ".join([f"{s.name} ({s.kind})" for s in symbols[:15]])
+        context_parts.append(f"\nKey symbols: {symbol_list}")
+    
+    return "\n".join(context_parts)
+
+
 @router.post("/chat", response_model=ChatResponse)
-async def chat(snapshot_id: str, request: ChatRequest):
+async def chat(
+    snapshot_id: str,
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Chat with AI about the codebase"""
     session_id = request.session_id or str(uuid.uuid4())
     
-    # Demo response
-    response_content = """It looks like you're talking about a Minesweeper game! It's a classic game of logic and deduction. Here's a breakdown of how it works:
-
-1. **Initialization:** The game starts by creating a grid of cells, with a hidden number of mines randomly placed within the grid.
-
-2. **Player's Turn:** The player clicks on a cell.
-
-   • **If the cell contains a mine:** The game is over, and the player loses.
-   
-   • **If the cell is safe:** The cell is revealed, and the number of adjacent mines is displayed."""
-
-    return ChatResponse(
-        session_id=session_id,
-        message=ChatMessage(
-            role="assistant",
-            content=response_content,
-            citations=[
-                {"file": "minesweeper/minesweeper.py", "lines": "1-45"},
-                {"file": "minesweeper/assets/images/mine.png"},
-            ],
-        ),
-    )
+    try:
+        # Get codebase context
+        context = await get_codebase_context(db, snapshot_id, request.context_file)
+        
+        # Call Gemini
+        response_text = await call_gemini(request.message, context)
+        
+        return ChatResponse(
+            session_id=session_id,
+            message=ChatMessage(
+                role="assistant",
+                content=response_text,
+                citations=[],
+            ),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Fallback response if API fails
+        return ChatResponse(
+            session_id=session_id,
+            message=ChatMessage(
+                role="assistant",
+                content=f"I encountered an error processing your request: {str(e)}. Please try again.",
+                citations=[],
+            ),
+        )
 
 
 @router.post("/explain", response_model=ExplainResponse)
-async def explain(snapshot_id: str, request: ExplainRequest):
+async def explain(
+    snapshot_id: str,
+    request: ExplainRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Get AI explanation of a file, symbol, or the system"""
-    
-    return ExplainResponse(
-        explanation="""This is a Minesweeper game implementation in Python.
-
-**Key Components:**
-- `Minesweeper` class: Main game logic
-- `__init__`: Sets up the board with random mine placement
-- `nearby_mines`: Counts adjacent mines for a cell
-- `won`: Checks victory condition
-
-The game uses a 2D grid (self.board) where True = mine, False = safe.""",
-        citations=[
-            {"file": "minesweeper/minesweeper.py", "lines": "1-75"},
-        ],
-        suggested_graph={
-            "type": "dependency",
-            "root": "Minesweeper",
-        },
-    )
+    try:
+        # Get file content if target is a file path
+        file_content = ""
+        if "/" in request.target or request.target.endswith(".py") or request.target.endswith(".ts"):
+            result = await db.execute(
+                select(File).where(
+                    File.snapshot_id == snapshot_id,
+                    File.path == request.target
+                )
+            )
+            file = result.scalar_one_or_none()
+            if file and file.content:
+                file_content = f"File: {file.path}\n```{file.language or ''}\n{file.content[:6000]}\n```"
+        
+        question = request.question or f"Explain this code: {request.target}"
+        prompt = f"{question}\n\n{file_content}" if file_content else question
+        
+        explanation = await call_gemini(prompt, "")
+        
+        return ExplainResponse(
+            explanation=explanation,
+            citations=[{"file": request.target}] if "/" in request.target else [],
+            suggested_graph=None,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        return ExplainResponse(
+            explanation=f"Error generating explanation: {str(e)}",
+            citations=[],
+            suggested_graph=None,
+        )
 
 
 @router.post("/propose-changes", response_model=ChangeProposal)
-async def propose_changes(snapshot_id: str, request: ProposeChangesRequest):
+async def propose_changes(
+    snapshot_id: str,
+    request: ProposeChangesRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Have AI propose code changes"""
     changeset_id = str(uuid.uuid4())
+    
+    # Get context for the files
+    context_parts = []
+    if request.files:
+        for file_path in request.files[:5]:  # Limit to 5 files
+            result = await db.execute(
+                select(File).where(
+                    File.snapshot_id == snapshot_id,
+                    File.path == file_path
+                )
+            )
+            file = result.scalar_one_or_none()
+            if file and file.content:
+                context_parts.append(f"File: {file.path}\n```{file.language or ''}\n{file.content[:3000]}\n```")
+    
+    context = "\n\n".join(context_parts)
+    prompt = f"Propose code changes for: {request.instruction}\n\nDescribe what changes should be made and why."
+    
+    try:
+        rationale = await call_gemini(prompt, context)
+    except:
+        rationale = "Unable to generate AI proposal. Please try again."
     
     return ChangeProposal(
         changeset_id=changeset_id,
         title=f"AI Proposed: {request.instruction[:50]}...",
-        rationale="Based on your request, here are the proposed changes.",
-        patches=[],  # Would contain actual diffs
+        rationale=rationale,
+        patches=[],
         impacted_files=request.files or [],
     )
