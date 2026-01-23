@@ -13,11 +13,14 @@
 </p>
 
 <p align="center">
+  <img src="docs/interface.png" alt="CodeAtlas Interface" width="90%" />
+</p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
-  <a href="#api-reference">API</a> •
-  <a href="#roadmap">Roadmap</a>
+  <a href="#api-reference">API</a>
 </p>
 
 <p align="center">
@@ -81,23 +84,6 @@ Review, apply, rollback, and commit code changes with full audit trail. Never lo
 </td>
 </tr>
 </table>
-
----
-
-## 🖼️ Screenshots
-
-<p align="center">
-  <img src="docs/screenshot.png" alt="CodeAtlas Interface" width="100%" />
-</p>
-
-<details>
-<summary><strong>View More Screenshots</strong></summary>
-
-| Graph View | Chat Interface | Code Editor |
-|------------|----------------|-------------|
-| ![Graph](docs/graph.png) | ![Chat](docs/chat.png) | ![Editor](docs/editor.png) |
-
-</details>
 
 ---
 
@@ -394,42 +380,6 @@ CodeAtlas/
 - `chat` - Send chat message
 - `presence_update` - User presence changed
 - `user_joined` / `user_left` - User connected/disconnected
-
----
-
-## 🗺️ Roadmap
-
-### Phase 1 — Foundation ✅
-- [x] 3-pane UI (File Tree / Graph / Editor)
-- [x] Dark theme with beautiful aesthetics
-- [x] SQLAlchemy models (Project, Snapshot, File, Symbol)
-- [x] Async PostgreSQL with pgvector support
-- [x] File scanner with gitignore/binary detection
-- [x] Tree-sitter parsing (Python, JavaScript, TypeScript)
-- [x] Regex fallback for other languages
-- [x] API client with TypeScript types
-- [x] Zustand state management
-- [x] Project import with sync indexing
-- [x] File tree from database
-- [x] Code viewer with syntax highlighting
-- [x] Symbol search
-- [x] Dependency graph visualization
-- [x] AI chat interface
-
-### Phase 2 — Safe Edits & Git ✅
-- [x] ChangeSet diff viewer
-- [x] Apply/rollback functionality  
-- [x] Multi-file refactoring
-- [x] Git commit integration
-- [x] Branch-aware snapshots
-- [x] Impact analysis ("what breaks if I change X?")
-
-### Phase 3 — Collaboration & Scale ✅
-- [x] Multi-user projects (JWT authentication, project membership)
-- [x] Real-time collaboration (WebSocket presence, live cursors)
-- [x] Incremental indexing (only re-index changed files)
-- [x] Large repo optimizations (pagination, caching)
-- [x] Enterprise RBAC & audit logs (role-based permissions, action logging)
 
 ---
 

@@ -57,7 +57,7 @@ interface TreeItemProps {
   depth: number;
   selectedFile: string | null;
   onFileSelect: (path: string) => void;
-  expandedFolders: Set<string>;
+  expandedFolders: string[];
   toggleFolder: (path: string) => void;
 }
 
@@ -71,7 +71,7 @@ function TreeItem({
 }: TreeItemProps) {
   const isFolder = node.type === "folder";
   const isSelected = selectedFile === node.path;
-  const isOpen = expandedFolders.has(node.path);
+  const isOpen = expandedFolders.includes(node.path);
 
   const handleClick = () => {
     if (isFolder) {
@@ -161,14 +161,14 @@ export function FileTree({ onFileSelect, selectedFile, onImportClick }: FileTree
 
   // Auto-expand first two levels
   useEffect(() => {
-    if (fileTree.length > 0 && expandedFolders.size === 0) {
+    if (fileTree.length > 0 && expandedFolders.length === 0) {
       fileTree.forEach((node) => {
         if (node.type === "folder") {
           toggleFolder(node.path);
         }
       });
     }
-  }, [fileTree, expandedFolders.size, toggleFolder]);
+  }, [fileTree, expandedFolders.length, toggleFolder]);
 
   const handleRefresh = async () => {
     if (!currentSnapshot) return;
