@@ -23,7 +23,7 @@ class AuditService:
         resource_id: Optional[str] = None,
         project_id: Optional[str] = None,
         description: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        extra_data: Optional[dict] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
     ) -> AuditLog:
@@ -37,7 +37,7 @@ class AuditService:
             resource_id: ID of the affected resource
             project_id: ID of the project context (if applicable)
             description: Human-readable description
-            metadata: Additional data as JSON
+            extra_data: Additional data as JSON
             ip_address: Client IP address
             user_agent: Client user agent string
         
@@ -51,7 +51,7 @@ class AuditService:
             resource_id=resource_id,
             project_id=project_id,
             description=description,
-            metadata=metadata,
+            extra_data=extra_data,
             ip_address=ip_address,
             user_agent=user_agent,
             created_at=datetime.now(timezone.utc),
@@ -72,16 +72,16 @@ class AuditService:
         failure_reason: Optional[str] = None,
     ) -> AuditLog:
         """Log an authentication event"""
-        metadata = {"success": success}
+        extra_data = {"success": success}
         if failure_reason:
-            metadata["failure_reason"] = failure_reason
+            extra_data["failure_reason"] = failure_reason
         
         return await self.log(
             action=action,
             resource_type="auth",
             user_id=user_id if success else None,
             description=f"Authentication {'succeeded' if success else 'failed'}",
-            metadata=metadata,
+            extra_data=extra_data,
             ip_address=ip_address,
             user_agent=user_agent,
         )
@@ -92,7 +92,7 @@ class AuditService:
         project_id: str,
         user_id: str,
         description: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        extra_data: Optional[dict] = None,
         ip_address: Optional[str] = None,
     ) -> AuditLog:
         """Log a project-related event"""
@@ -103,7 +103,7 @@ class AuditService:
             project_id=project_id,
             user_id=user_id,
             description=description,
-            metadata=metadata,
+            extra_data=extra_data,
             ip_address=ip_address,
         )
     
@@ -114,7 +114,7 @@ class AuditService:
         project_id: str,
         user_id: str,
         description: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        extra_data: Optional[dict] = None,
         ip_address: Optional[str] = None,
     ) -> AuditLog:
         """Log a changeset-related event"""
@@ -125,6 +125,6 @@ class AuditService:
             project_id=project_id,
             user_id=user_id,
             description=description,
-            metadata=metadata,
+            extra_data=extra_data,
             ip_address=ip_address,
         )

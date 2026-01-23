@@ -51,8 +51,8 @@ class AuditLog(Base):
     # Details about the action
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
-    # Additional metadata (JSON for flexibility)
-    metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # Additional data (JSON for flexibility)
+    extra_data: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     
     # Request context
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
