@@ -16,7 +16,10 @@ from app.core.database import get_db
 from app.core.config import settings
 from app.models.snapshot import Snapshot
 from app.models.file import File
-from app.models.symbol import Symbol
+from app.models.symbol import Symbol, SymbolKind
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -62,6 +65,45 @@ class ChangeProposal(BaseModel):
     impacted_files: List[str]
 
 
+async def call_ollama(prompt: str, context: str = "") -> str:
+    """Call local Ollama server for chat completion"""
+    url = f"{settings.OLLAMA_BASE_URL}/api/generate"
+    
+    full_prompt = prompt
+    if context:
+        full_prompt = f"""You are CodeAtlas, an AI assistant that helps developers understand and navigate codebases.
+
+Here is some context about the codebase:
+{context}
+
+User question: {prompt}
+
+Please provide a helpful, concise response. If referencing code, mention the file paths."""
+
+    payload = {
+        "model": settings.OLLAMA_MODEL,
+        "prompt": full_prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.7,
+            "num_predict": 2048,
+        }
+    }
+    
+    async with httpx.AsyncClient(timeout=300.0) as client:  # 5 min timeout for large contexts
+        try:
+            response = await client.post(url, json=payload)
+            
+            if response.status_code != 200:
+                error_detail = response.text
+                raise HTTPException(status_code=500, detail=f"Ollama error: {error_detail}")
+            
+            data = response.json()
+            return data.get("response", "")
+        except httpx.ConnectError:
+            raise HTTPException(status_code=500, detail="Ollama server not running. Start it with: ollama serve")
+
+
 async def call_gemini(prompt: str, context: str = "") -> str:
     """Call Gemini API for chat completion"""
     if not settings.GEMINI_API_KEY:
@@ -105,6 +147,18 @@ Please provide a helpful, concise response. If referencing code, mention the fil
             raise HTTPException(status_code=500, detail=f"Unexpected Gemini response format: {data}")
 
 
+async def call_llm(prompt: str, context: str = "") -> str:
+    """Call the configured LLM provider"""
+    provider = settings.AI_PROVIDER.lower()
+    
+    if provider == "ollama":
+        return await call_ollama(prompt, context)
+    elif provider == "gemini":
+        return await call_gemini(prompt, context)
+    else:
+        raise HTTPException(status_code=500, detail=f"Unknown AI provider: {provider}")
+
+
 async def get_codebase_context(db: AsyncSession, snapshot_id: str, file_path: Optional[str] = None) -> str:
     """Get relevant codebase context for AI"""
     # Get snapshot
@@ -141,12 +195,12 @@ async def get_codebase_context(db: AsyncSession, snapshot_id: str, file_path: Op
     result = await db.execute(
         select(Symbol.name, Symbol.kind, Symbol.qualified_name)
         .where(Symbol.snapshot_id == snapshot_id)
-        .where(Symbol.kind.in_(["class", "function"]))
+        .where(Symbol.kind.in_([SymbolKind.CLASS, SymbolKind.FUNCTION]))
         .limit(30)
     )
     symbols = result.all()
     if symbols:
-        symbol_list = ", ".join([f"{s.name} ({s.kind})" for s in symbols[:15]])
+        symbol_list = ", ".join([f"{s.name} ({s.kind.value})" for s in symbols[:15]])
         context_parts.append(f"\nKey symbols: {symbol_list}")
     
     return "\n".join(context_parts)
@@ -165,8 +219,8 @@ async def chat(
         # Get codebase context
         context = await get_codebase_context(db, snapshot_id, request.context_file)
         
-        # Call Gemini
-        response_text = await call_gemini(request.message, context)
+        # Call LLM (Ollama or Gemini based on config)
+        response_text = await call_llm(request.message, context)
         
         return ChatResponse(
             session_id=session_id,
@@ -180,11 +234,13 @@ async def chat(
         raise
     except Exception as e:
         # Fallback response if API fails
+        logger.exception(f"Chat error: {e}")
+        error_msg = str(e) if str(e) else type(e).__name__
         return ChatResponse(
             session_id=session_id,
             message=ChatMessage(
                 role="assistant",
-                content=f"I encountered an error processing your request: {str(e)}. Please try again.",
+                content=f"I encountered an error processing your request: {error_msg}. Please try again.",
                 citations=[],
             ),
         )
@@ -214,7 +270,7 @@ async def explain(
         question = request.question or f"Explain this code: {request.target}"
         prompt = f"{question}\n\n{file_content}" if file_content else question
         
-        explanation = await call_gemini(prompt, "")
+        explanation = await call_llm(prompt, "")
         
         return ExplainResponse(
             explanation=explanation,
@@ -258,8 +314,8 @@ async def propose_changes(
     prompt = f"Propose code changes for: {request.instruction}\n\nDescribe what changes should be made and why."
     
     try:
-        rationale = await call_gemini(prompt, context)
-    except:
+        rationale = await call_llm(prompt, context)
+    except Exception:
         rationale = "Unable to generate AI proposal. Please try again."
     
     return ChangeProposal(

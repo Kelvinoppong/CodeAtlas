@@ -30,7 +30,7 @@ Import a project to get started, or explore the demo!`,
 };
 
 export function ChatPanel() {
-  const { currentSnapshot, chatSessionId, setChatSessionId, setSelectedFile } = useAppStore();
+  const { currentSnapshot, chatSessionId, setChatSessionId, setSelectedFile, selectedFile } = useAppStore();
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,8 +55,8 @@ export function ChatPanel() {
 
     try {
       if (currentSnapshot) {
-        // Real API call
-        const response = await api.chat(currentSnapshot.id, input, chatSessionId || undefined);
+        // Real API call - include selected file as context
+        const response = await api.chat(currentSnapshot.id, input, chatSessionId || undefined, selectedFile || undefined);
         setChatSessionId(response.session_id);
 
         const assistantMessage: Message = {
@@ -201,7 +201,9 @@ Once imported, I can:
               }}
               placeholder={
                 currentSnapshot
-                  ? "Ask about the codebase..."
+                  ? selectedFile
+                    ? `Ask about ${selectedFile.split('/').pop()}...`
+                    : "Ask about the codebase..."
                   : "Import a project to start chatting..."
               }
               rows={1}

@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     
+    # Ollama (local LLM)
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5-coder:7b"
+    AI_PROVIDER: str = "ollama"  # "ollama", "gemini", or "openai"
+    
     # Storage
     PROJECTS_DIR: str = "./projects"
     

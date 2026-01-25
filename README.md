@@ -17,6 +17,11 @@
 </p>
 
 <p align="center">
+  <img src="docs/chat-demo.png" alt="AI Chat Demo - Explaining Code" width="90%" />
+</p>
+<p align="center"><em>AI-powered code explanation with Ollama (local LLM)</em></p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
@@ -30,6 +35,7 @@
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python" alt="Python" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Tree--sitter-Parsing-green?style=flat-square" alt="Tree-sitter" />
+  <img src="https://img.shields.io/badge/Ollama-Local_LLM-white?style=flat-square&logo=ollama" alt="Ollama" />
 </p>
 
 ---
@@ -216,7 +222,7 @@ When you import a project, CodeAtlas runs a multi-stage indexing pipeline:
 | **ORM** | SQLAlchemy 2.0 (async) | Database models |
 | **Database** | PostgreSQL 16 + pgvector | Persistent storage + vectors |
 | **Parsing** | Tree-sitter | AST extraction for Python/JS/TS |
-| **AI/LLM** | OpenAI / Gemini | Chat & code explanation |
+| **AI/LLM** | Ollama (local) / Gemini / OpenAI | Chat & code explanation |
 
 ---
 
@@ -391,7 +397,14 @@ Create a `.env` file in the `backend/` directory:
 # Database (required)
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/codeatlas
 
-# AI Providers (optional - for AI features)
+# AI Provider - choose one: "ollama" (local), "gemini", or "openai"
+AI_PROVIDER=ollama
+
+# Ollama (local - recommended, no API key needed)
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5-coder:7b
+
+# Cloud providers (optional alternatives)
 OPENAI_API_KEY=sk-...
 GEMINI_API_KEY=...
 
