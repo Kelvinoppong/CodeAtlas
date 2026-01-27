@@ -6,15 +6,11 @@ import { CenterCanvas } from "@/components/CenterCanvas";
 import { CodeEditor } from "@/components/CodeEditor";
 import { Header } from "@/components/Header";
 import { ProjectImport } from "@/components/ProjectImport";
-import { AuthModal } from "@/components/AuthModal";
 import { useAppStore } from "@/lib/store";
-import { useAuthStore } from "@/lib/authStore";
 import api from "@/lib/api";
 
 export default function Home() {
   const [showImport, setShowImport] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
-  const { checkAuth } = useAuthStore();
   const {
     currentProject,
     currentSnapshot,
@@ -81,11 +77,6 @@ export default function Home() {
       });
   }, [setCurrentProject, setCurrentSnapshot, setFileTree]);
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
   const handleImportSuccess = () => {
     setShowImport(false);
   };
@@ -94,8 +85,7 @@ export default function Home() {
     <div className="h-screen w-screen flex flex-col bg-arb-bg overflow-hidden">
       {/* Top Header */}
       <Header 
-        onImportClick={() => setShowImport(true)} 
-        onLoginClick={() => setShowAuth(true)}
+        onImportClick={() => setShowImport(true)}
       />
 
       {/* Main 3-Pane Layout */}
@@ -126,11 +116,6 @@ export default function Home() {
           onClose={() => setShowImport(false)}
           onSuccess={handleImportSuccess}
         />
-      )}
-      
-      {/* Auth Modal */}
-      {showAuth && (
-        <AuthModal onClose={() => setShowAuth(false)} />
       )}
     </div>
   );
