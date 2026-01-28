@@ -12,6 +12,7 @@ import ReactFlow, {
   Position,
   MarkerType,
   Handle,
+  ConnectionLineType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Loader2 } from "lucide-react";
@@ -35,23 +36,27 @@ function DiamondNode({ data }: { data: { label: string; type?: string } }) {
   };
 
   return (
-    <div className="relative">
-      <Handle type="target" position={Position.Top} className="opacity-0" />
+    <div className="relative flex flex-col items-center">
+      <Handle type="target" position={Position.Top} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Left} className="!bg-arb-accent !w-2 !h-2 !border-0" />
       <div
-        className={`w-16 h-16 bg-gradient-to-br ${getColor()} rounded-lg diamond shadow-glow cursor-pointer hover:scale-110 transition-transform`}
+        className={`w-12 h-12 bg-gradient-to-br ${getColor()} rounded-lg diamond shadow-glow cursor-pointer hover:scale-110 transition-transform`}
         style={{
-          boxShadow: "0 0 30px rgba(196, 181, 253, 0.4)",
+          boxShadow: "0 0 20px rgba(196, 181, 253, 0.4)",
+          transform: "rotate(45deg)",
         }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center diamond-content">
-          <span className="text-xs font-medium text-arb-bg truncate max-w-[50px]">
-            {data.label}
-          </span>
-        </div>
+      />
+      <Handle type="source" position={Position.Bottom} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Right} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      {/* Label below the diamond */}
+      <div className="mt-2 px-2 py-1 bg-arb-surface/80 rounded text-center max-w-[120px]">
+        <span className="text-xs font-medium text-arb-text whitespace-nowrap overflow-hidden text-ellipsis block">
+          {data.label}
+        </span>
+        {data.type && (
+          <span className="text-[10px] text-arb-text-dim">{data.type}</span>
+        )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="opacity-0" />
-      <Handle type="source" position={Position.Left} className="opacity-0" />
-      <Handle type="source" position={Position.Right} className="opacity-0" />
     </div>
   );
 }
@@ -61,28 +66,46 @@ function StandardNode({ data }: { data: { label: string; type?: string } }) {
   const getBgColor = () => {
     switch (data.type) {
       case "class":
-        return "bg-yellow-500/20 border-yellow-500/50";
+        return "bg-yellow-500/20 border-yellow-500/50 hover:border-yellow-400";
       case "function":
       case "method":
-        return "bg-blue-500/20 border-blue-500/50";
+        return "bg-blue-500/20 border-blue-500/50 hover:border-blue-400";
       case "file":
-        return "bg-arb-accent/20 border-arb-accent/50";
+        return "bg-arb-accent/20 border-arb-accent/50 hover:border-arb-accent";
       default:
-        return "bg-arb-surface border-arb-border";
+        return "bg-arb-surface border-arb-border hover:border-arb-accent/50";
+    }
+  };
+
+  const getTypeIcon = () => {
+    switch (data.type) {
+      case "class": return "◆";
+      case "function": return "ƒ";
+      case "method": return "→";
+      case "file": return "📄";
+      default: return "•";
     }
   };
 
   return (
     <div className="relative">
-      <Handle type="target" position={Position.Top} className="opacity-0" />
+      <Handle type="target" position={Position.Top} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Left} className="!bg-arb-accent !w-2 !h-2 !border-0" />
       <div
-        className={`px-3 py-2 rounded-lg border ${getBgColor()} cursor-pointer hover:scale-105 transition-transform`}
+        className={`px-3 py-2 rounded-lg border-2 ${getBgColor()} cursor-pointer hover:scale-105 transition-all shadow-lg`}
       >
-        <span className="text-xs font-medium text-arb-text">
-          {data.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs opacity-60">{getTypeIcon()}</span>
+          <span className="text-sm font-medium text-arb-text max-w-[150px] truncate">
+            {data.label}
+          </span>
+        </div>
+        {data.type && (
+          <span className="text-[10px] text-arb-text-dim block mt-0.5">{data.type}</span>
+        )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Right} className="!bg-arb-accent !w-2 !h-2 !border-0" />
     </div>
   );
 }
@@ -133,8 +156,9 @@ const demoEdges: Edge[] = [
   { id: "e15-16", source: "15", target: "16" },
 ].map((edge) => ({
   ...edge,
+  type: "smoothstep",
   style: { stroke: "#a78bfa", strokeWidth: 2 },
-  markerEnd: { type: MarkerType.ArrowClosed, color: "#a78bfa" },
+  markerEnd: { type: MarkerType.ArrowClosed, color: "#a78bfa", width: 20, height: 20 },
 }));
 
 function layoutNodes(graphNodes: GraphNode[]): Node[] {
@@ -153,9 +177,9 @@ function layoutNodes(graphNodes: GraphNode[]): Node[] {
   });
 
   const results: Node[] = [];
-  const nodeSpacing = 120;
-  const levelSpacing = 100;
-  const maxNodesPerRow = 8; // Wrap to new row after this many
+  const nodeSpacing = 180;  // More space for labels
+  const levelSpacing = 140; // More vertical space
+  const maxNodesPerRow = 6; // Fewer nodes per row for readability
   
   // Sort levels and position nodes
   const sortedLevels = Array.from(nodesByLevel.keys()).sort((a, b) => a - b);
@@ -201,9 +225,21 @@ function layoutEdges(graphEdges: GraphEdge[]): Edge[] {
     id: `e-${i}`,
     source: edge.source,
     target: edge.target,
-    style: { stroke: "#a78bfa", strokeWidth: 2 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#a78bfa" },
+    type: "smoothstep",
+    style: { 
+      stroke: edge.type === "contains" ? "#22d3ee" : "#a78bfa", 
+      strokeWidth: 2,
+    },
+    markerEnd: { 
+      type: MarkerType.ArrowClosed, 
+      color: edge.type === "contains" ? "#22d3ee" : "#a78bfa",
+      width: 20,
+      height: 20,
+    },
     animated: edge.type === "contains",
+    label: edge.type !== "imports" ? edge.type : undefined,
+    labelStyle: { fill: "#9ca3af", fontSize: 10 },
+    labelBgStyle: { fill: "#1a1a2e", fillOpacity: 0.8 },
   }));
 }
 
@@ -264,10 +300,13 @@ export function GraphViewer() {
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2, minZoom: 0.3, maxZoom: 1.5 }}
+        fitViewOptions={{ padding: 0.3, minZoom: 0.2, maxZoom: 2 }}
         defaultEdgeOptions={{
+          type: "smoothstep",
           style: { stroke: "#a78bfa", strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#a78bfa" },
         }}
+        connectionLineType={ConnectionLineType.SmoothStep}
         proOptions={{ hideAttribution: true }}
       >
         <Background color="#2a2a3a" gap={20} size={1} />
