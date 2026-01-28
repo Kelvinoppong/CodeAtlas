@@ -50,7 +50,12 @@ export default function Home() {
       .listProjects()
       .then(async (projects) => {
         if (projects.length > 0) {
-          const project = projects[0];
+          // Find the most recent project with snapshots
+          const projectsWithSnapshots = projects.filter(p => p.snapshot_count > 0);
+          const project = projectsWithSnapshots.length > 0 
+            ? projectsWithSnapshots[projectsWithSnapshots.length - 1]  // Most recent
+            : projects[projects.length - 1];  // Fallback to most recent
+          
           setCurrentProject(project);
 
           // Get latest snapshot
