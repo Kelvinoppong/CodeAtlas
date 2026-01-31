@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { GraphViewer } from "./GraphViewer";
 import { ChatPanel } from "./ChatPanel";
 import { ChangeSetPanel } from "./ChangeSetPanel";
+import { TimelinePanel } from "./TimelinePanel";
 
 type TabType = "chat" | "graph" | "timeline" | "changes";
 
@@ -56,14 +57,7 @@ export function CenterCanvas({ activeTab, onTabChange }: CenterCanvasProps) {
         {activeTab === "graph" && <GraphViewer />}
         {activeTab === "chat" && <ChatPanel />}
         {activeTab === "changes" && <ChangeSetPanel />}
-        {activeTab === "timeline" && (
-          <div className="flex items-center justify-center h-full text-arb-text-muted">
-            <div className="text-center">
-              <Clock className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Timeline view coming soon</p>
-            </div>
-          </div>
-        )}
+        {activeTab === "timeline" && <TimelinePanel />}
       </div>
     </div>
   );
