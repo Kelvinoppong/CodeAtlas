@@ -70,15 +70,38 @@ async def call_ollama(prompt: str, context: str = "") -> str:
     url = f"{settings.OLLAMA_BASE_URL}/api/generate"
     
     full_prompt = prompt
-    if context:
-        full_prompt = f"""You are CodeAtlas, an AI assistant that helps developers understand and navigate codebases.
+    if context and "CURRENT FILE:" in context:
+        # We have a specific file selected - explain it
+        full_prompt = f"""You are CodeAtlas, an AI coding assistant. The user is viewing a specific file. Answer their question based on the file content below.
 
-Here is some context about the codebase:
+=== FILE CONTENT ===
 {context}
+=== END FILE ===
 
-User question: {prompt}
+USER QUESTION: {prompt}
 
-Please provide a helpful, concise response. If referencing code, mention the file paths."""
+INSTRUCTIONS:
+- Focus on explaining the file shown above
+- Be specific and reference actual code/lines
+- Keep your response helpful and concise"""
+    elif context:
+        # General codebase context
+        full_prompt = f"""You are CodeAtlas, an AI coding assistant helping understand a codebase.
+
+=== CODEBASE INFO ===
+{context}
+=== END INFO ===
+
+USER QUESTION: {prompt}
+
+Answer based on the codebase information provided."""
+    else:
+        # No context at all
+        full_prompt = f"""You are CodeAtlas, an AI coding assistant.
+
+USER QUESTION: {prompt}
+
+Note: No specific file is currently selected. If the user asks about "this file" or "the current file", suggest they select a file from the file tree first."""
 
     payload = {
         "model": settings.OLLAMA_MODEL,
@@ -168,9 +191,9 @@ async def get_codebase_context(db: AsyncSession, snapshot_id: str, file_path: Op
     if not snapshot:
         return ""
     
-    context_parts = [f"Project snapshot with {snapshot.file_count} files and {snapshot.symbol_count} symbols."]
+    context_parts = []
     
-    # If a specific file is requested, include its content
+    # If a specific file is requested, include its content FIRST (most important)
     if file_path:
         result = await db.execute(
             select(File).where(
@@ -180,7 +203,10 @@ async def get_codebase_context(db: AsyncSession, snapshot_id: str, file_path: Op
         )
         file = result.scalar_one_or_none()
         if file and file.content:
-            context_parts.append(f"\nFile: {file.path}\n```{file.language or ''}\n{file.content[:4000]}\n```")
+            context_parts.append(f"CURRENT FILE: {file.path}")
+            context_parts.append(f"```{file.language or ''}\n{file.content[:6000]}\n```")
+    
+    context_parts.append(f"\nProject has {snapshot.file_count} files and {snapshot.symbol_count} symbols.")
     
     # Get list of files
     result = await db.execute(

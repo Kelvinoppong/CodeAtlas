@@ -6,11 +6,13 @@ import { CenterCanvas } from "@/components/CenterCanvas";
 import { CodeEditor } from "@/components/CodeEditor";
 import { Header } from "@/components/Header";
 import { ProjectImport } from "@/components/ProjectImport";
+import { SettingsModal } from "@/components/SettingsModal";
 import { useAppStore } from "@/lib/store";
 import api from "@/lib/api";
 
 export default function Home() {
   const [showImport, setShowImport] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const {
     currentProject,
     currentSnapshot,
@@ -91,6 +93,7 @@ export default function Home() {
       {/* Top Header */}
       <Header 
         onImportClick={() => setShowImport(true)}
+        onSettingsClick={() => setShowSettings(true)}
       />
 
       {/* Main 3-Pane Layout */}
@@ -121,6 +124,11 @@ export default function Home() {
           onClose={() => setShowImport(false)}
           onSuccess={handleImportSuccess}
         />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

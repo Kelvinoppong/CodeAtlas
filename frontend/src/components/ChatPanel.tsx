@@ -188,6 +188,14 @@ Once imported, I can:
 
       {/* Input */}
       <div className="flex-shrink-0 p-4 border-t border-arb-border bg-arb-panel">
+        {/* Context indicator */}
+        {currentSnapshot && selectedFile && (
+          <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-arb-accent/10 border border-arb-accent/30 rounded-lg text-xs">
+            <FileText className="w-3 h-3 text-arb-accent" />
+            <span className="text-arb-text-dim">Context:</span>
+            <span className="text-arb-accent font-medium truncate">{selectedFile}</span>
+          </div>
+        )}
         <div className="flex items-end gap-3">
           <div className="flex-1 relative">
             <textarea

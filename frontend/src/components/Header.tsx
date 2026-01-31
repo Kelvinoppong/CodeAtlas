@@ -7,9 +7,10 @@ import api from "@/lib/api";
 
 interface HeaderProps {
   onImportClick: () => void;
+  onSettingsClick: () => void;
 }
 
-export function Header({ onImportClick }: HeaderProps) {
+export function Header({ onImportClick, onSettingsClick }: HeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -119,7 +120,11 @@ export function Header({ onImportClick }: HeaderProps) {
           <Download className="w-4 h-4" />
           <span className="hidden sm:inline">Export</span>
         </button>
-        <button className="p-2 rounded-lg hover:bg-arb-surface transition-colors">
+        <button 
+          onClick={onSettingsClick}
+          className="p-2 rounded-lg hover:bg-arb-surface transition-colors"
+          title="Settings"
+        >
           <Settings className="w-5 h-5 text-arb-text-dim" />
         </button>
       </div>
