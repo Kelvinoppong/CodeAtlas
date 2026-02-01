@@ -22,6 +22,12 @@
 <p align="center"><em>AI-powered code explanation with Ollama (local LLM)</em></p>
 
 <p align="center">
+  <a href="https://youtu.be/YOUR_VIDEO_ID">
+    <img src="https://img.shields.io/badge/▶_Watch_Demo-YouTube-red?style=for-the-badge&logo=youtube" alt="Watch Demo Video" />
+  </a>
+</p>
+
+<p align="center">
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
