@@ -2,6 +2,67 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Custom Properties for theming */
+:root {
+  /* Accent colors - can be changed dynamically */
+  --accent-color: #a78bfa;
+  --accent-color-dim: #7c5ccc;
+  --accent-color-rgb: 167, 139, 250;
+  
+  /* Dark theme (default) */
+  --bg-color: #0a0a0f;
+  --panel-color: #12121a;
+  --surface-color: #1a1a24;
+  --border-color: #2a2a3a;
+  --hover-color: #252532;
+  --text-color: #e4e4eb;
+  --text-dim: #8888a0;
+  --text-muted: #5a5a70;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg-color: #f5f5f7;
+  --panel-color: #ffffff;
+  --surface-color: #f0f0f3;
+  --border-color: #e0e0e5;
+  --hover-color: #e8e8ed;
+  --text-color: #1a1a2e;
+  --text-dim: #6b6b80;
+  --text-muted: #9090a0;
+}
+
+/* Accent color presets */
+[data-accent="purple"] {
+  --accent-color: #a78bfa;
+  --accent-color-dim: #7c5ccc;
+  --accent-color-rgb: 167, 139, 250;
+}
+
+[data-accent="pink"] {
+  --accent-color: #f472b6;
+  --accent-color-dim: #db2777;
+  --accent-color-rgb: 244, 114, 182;
+}
+
+[data-accent="green"] {
+  --accent-color: #34d399;
+  --accent-color-dim: #10b981;
+  --accent-color-rgb: 52, 211, 153;
+}
+
+[data-accent="blue"] {
+  --accent-color: #60a5fa;
+  --accent-color-dim: #3b82f6;
+  --accent-color-rgb: 96, 165, 250;
+}
+
+[data-accent="yellow"] {
+  --accent-color: #fbbf24;
+  --accent-color-dim: #f59e0b;
+  --accent-color-rgb: 251, 191, 36;
+}
+
 /* Base styles */
 * {
   box-sizing: border-box;
@@ -13,6 +74,9 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Custom scrollbar - sleek dark theme */
@@ -36,13 +100,13 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(167, 139, 250, 0.3);
-  color: #e4e4eb;
+  background: rgba(var(--accent-color-rgb), 0.3);
+  color: var(--text-color);
 }
 
 /* Focus rings */
 *:focus-visible {
-  outline: 2px solid #a78bfa;
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
 
@@ -71,7 +135,7 @@ body {
 
 /* Glow effect for active elements */
 .glow-active {
-  box-shadow: 0 0 20px rgba(167, 139, 250, 0.4);
+  box-shadow: 0 0 20px rgba(var(--accent-color-rgb), 0.4);
 }
 
 /* Subtle gradient backgrounds */
@@ -96,10 +160,10 @@ body {
 @keyframes borderGlow {
   0%,
   100% {
-    border-color: rgba(167, 139, 250, 0.3);
+    border-color: rgba(var(--accent-color-rgb), 0.3);
   }
   50% {
-    border-color: rgba(167, 139, 250, 0.6);
+    border-color: rgba(var(--accent-color-rgb), 0.6);
   }
 }
 
@@ -109,8 +173,8 @@ body {
 
 /* Code highlighting enhancement */
 .code-line-highlight {
-  background: rgba(167, 139, 250, 0.1);
-  border-left: 3px solid #a78bfa;
+  background: rgba(var(--accent-color-rgb), 0.1);
+  border-left: 3px solid var(--accent-color);
 }
 
 /* Tab indicator */
@@ -125,7 +189,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #a78bfa, #c4b5fd);
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-color-dim));
   border-radius: 2px 2px 0 0;
 }
 
@@ -184,5 +248,5 @@ body {
 
 /* Glow effect */
 .shadow-glow {
-  box-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
+  box-shadow: 0 0 20px rgba(var(--accent-color-rgb), 0.3);
 }

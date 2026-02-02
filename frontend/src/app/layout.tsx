@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppearanceProvider } from "@/components/AppearanceProvider";
 
 export const metadata: Metadata = {
   title: "CodeAtlas — Code Analysis Platform",
@@ -13,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -26,7 +27,9 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-arb-bg text-arb-text antialiased">{children}</body>
+      <body className="bg-arb-bg text-arb-text antialiased">
+        <AppearanceProvider>{children}</AppearanceProvider>
+      </body>
     </html>
   );
 }

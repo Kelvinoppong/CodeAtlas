@@ -9,22 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Deep dark theme inspired by the screenshot
-        "arb-bg": "#0a0a0f",
-        "arb-panel": "#12121a",
-        "arb-surface": "#1a1a24",
-        "arb-border": "#2a2a3a",
-        "arb-hover": "#252532",
-        // Accent - soft purple/lavender from the graph nodes
-        "arb-accent": "#a78bfa",
-        "arb-accent-dim": "#7c5ccc",
+        // Theme colors using CSS variables for dynamic theming
+        "arb-bg": "var(--bg-color)",
+        "arb-panel": "var(--panel-color)",
+        "arb-surface": "var(--surface-color)",
+        "arb-border": "var(--border-color)",
+        "arb-hover": "var(--hover-color)",
+        // Accent - using CSS variable for dynamic color
+        "arb-accent": "var(--accent-color)",
+        "arb-accent-dim": "var(--accent-color-dim)",
         // Text hierarchy
-        "arb-text": "#e4e4eb",
-        "arb-text-dim": "#8888a0",
-        "arb-text-muted": "#5a5a70",
-        // Graph node colors
-        "arb-node": "#c4b5fd",
-        "arb-node-glow": "rgba(167, 139, 250, 0.4)",
+        "arb-text": "var(--text-color)",
+        "arb-text-dim": "var(--text-dim)",
+        "arb-text-muted": "var(--text-muted)",
+        // Graph node colors (using accent)
+        "arb-node": "var(--accent-color)",
+        "arb-node-glow": "rgba(var(--accent-color-rgb), 0.4)",
         // Success/error states
         "arb-success": "#4ade80",
         "arb-error": "#f87171",
@@ -35,8 +35,8 @@ const config: Config = {
         display: ["Space Grotesk", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        "glow": "0 0 20px rgba(167, 139, 250, 0.3)",
-        "glow-lg": "0 0 40px rgba(167, 139, 250, 0.4)",
+        "glow": "0 0 20px rgba(var(--accent-color-rgb), 0.3)",
+        "glow-lg": "0 0 40px rgba(var(--accent-color-rgb), 0.4)",
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

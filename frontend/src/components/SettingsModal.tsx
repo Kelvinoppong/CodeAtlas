@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, Settings, Cpu, Palette, Info, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Settings, Cpu, Palette, Info, Check, Moon, Sun } from "lucide-react";
 import clsx from "clsx";
 
 interface SettingsModalProps {
@@ -9,6 +9,40 @@ interface SettingsModalProps {
 }
 
 type TabType = "ai" | "appearance" | "about";
+type ThemeType = "dark" | "light";
+type AccentType = "purple" | "pink" | "green" | "blue" | "yellow";
+
+const ACCENT_COLORS: { id: AccentType; color: string; label: string }[] = [
+  { id: "purple", color: "#a78bfa", label: "Purple" },
+  { id: "pink", color: "#f472b6", label: "Pink" },
+  { id: "green", color: "#34d399", label: "Green" },
+  { id: "blue", color: "#60a5fa", label: "Blue" },
+  { id: "yellow", color: "#fbbf24", label: "Yellow" },
+];
+
+// Apply theme to document
+function applyTheme(theme: ThemeType) {
+  if (typeof document !== "undefined") {
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+}
+
+// Apply accent color to document
+function applyAccent(accent: AccentType) {
+  if (typeof document !== "undefined") {
+    document.documentElement.setAttribute("data-accent", accent);
+  }
+}
+
+// Load saved preferences and apply them
+export function initializeAppearance() {
+  if (typeof window !== "undefined") {
+    const savedTheme = (localStorage.getItem("theme") as ThemeType) || "dark";
+    const savedAccent = (localStorage.getItem("accent") as AccentType) || "purple";
+    applyTheme(savedTheme);
+    applyAccent(savedAccent);
+  }
+}
 
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("ai");
@@ -22,7 +56,28 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       ? localStorage.getItem("ollama_model") || "qwen2.5-coder:1.5b"
       : "qwen2.5-coder:1.5b"
   );
+  const [theme, setTheme] = useState<ThemeType>(
+    typeof window !== "undefined"
+      ? (localStorage.getItem("theme") as ThemeType) || "dark"
+      : "dark"
+  );
+  const [accent, setAccent] = useState<AccentType>(
+    typeof window !== "undefined"
+      ? (localStorage.getItem("accent") as AccentType) || "purple"
+      : "purple"
+  );
   const [saved, setSaved] = useState(false);
+
+  // Apply theme and accent when they change
+  useEffect(() => {
+    applyTheme(theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    applyAccent(accent);
+    localStorage.setItem("accent", accent);
+  }, [accent]);
 
   const handleSave = () => {
     localStorage.setItem("ai_provider", aiProvider);
@@ -150,37 +205,99 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
             {activeTab === "appearance" && (
               <div className="space-y-6">
+                {/* Theme Selection */}
                 <div>
                   <h3 className="text-sm font-medium text-arb-text mb-3">Theme</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-4 rounded-lg border-2 border-arb-accent bg-arb-bg cursor-pointer">
-                      <div className="w-full h-16 rounded bg-gradient-to-br from-[#0a0a0f] to-[#1a1a2e] mb-2" />
-                      <div className="text-sm font-medium text-arb-text">Dark (Default)</div>
-                    </div>
-                    <div className="p-4 rounded-lg border border-arb-border bg-arb-surface cursor-not-allowed opacity-50">
-                      <div className="w-full h-16 rounded bg-gradient-to-br from-gray-100 to-gray-200 mb-2" />
-                      <div className="text-sm font-medium text-arb-text-dim">Light (Coming soon)</div>
-                    </div>
+                    <button
+                      onClick={() => setTheme("dark")}
+                      className={clsx(
+                        "p-4 rounded-lg border-2 transition-all",
+                        theme === "dark"
+                          ? "border-arb-accent bg-arb-surface"
+                          : "border-arb-border bg-arb-surface/50 hover:border-arb-accent/50"
+                      )}
+                    >
+                      <div className="w-full h-16 rounded bg-gradient-to-br from-[#0a0a0f] to-[#1a1a2e] mb-2 flex items-center justify-center">
+                        <Moon className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-arb-text">Dark</span>
+                        {theme === "dark" && (
+                          <Check className="w-4 h-4 text-arb-accent" />
+                        )}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setTheme("light")}
+                      className={clsx(
+                        "p-4 rounded-lg border-2 transition-all",
+                        theme === "light"
+                          ? "border-arb-accent bg-arb-surface"
+                          : "border-arb-border bg-arb-surface/50 hover:border-arb-accent/50"
+                      )}
+                    >
+                      <div className="w-full h-16 rounded bg-gradient-to-br from-gray-100 to-gray-200 mb-2 flex items-center justify-center">
+                        <Sun className="w-6 h-6 text-yellow-500" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-arb-text">Light</span>
+                        {theme === "light" && (
+                          <Check className="w-4 h-4 text-arb-accent" />
+                        )}
+                      </div>
+                    </button>
                   </div>
                 </div>
 
+                {/* Accent Color */}
                 <div>
                   <h3 className="text-sm font-medium text-arb-text mb-3">Accent Color</h3>
-                  <div className="flex gap-2">
-                    {["#a78bfa", "#f472b6", "#34d399", "#60a5fa", "#fbbf24"].map((color) => (
+                  <div className="flex gap-3">
+                    {ACCENT_COLORS.map((color) => (
                       <button
-                        key={color}
+                        key={color.id}
+                        onClick={() => setAccent(color.id)}
                         className={clsx(
-                          "w-8 h-8 rounded-full border-2 transition-transform hover:scale-110",
-                          color === "#a78bfa" ? "border-white" : "border-transparent"
+                          "w-10 h-10 rounded-full border-2 transition-all hover:scale-110 relative",
+                          accent === color.id
+                            ? "border-white shadow-lg scale-110"
+                            : "border-transparent"
                         )}
-                        style={{ backgroundColor: color }}
-                      />
+                        style={{ backgroundColor: color.color }}
+                        title={color.label}
+                      >
+                        {accent === color.id && (
+                          <Check className="w-4 h-4 text-white absolute inset-0 m-auto" />
+                        )}
+                      </button>
                     ))}
                   </div>
-                  <p className="text-xs text-arb-text-muted mt-2">
-                    Color customization coming soon
+                  <p className="text-xs text-arb-text-muted mt-3">
+                    Changes apply instantly and are saved automatically.
                   </p>
+                </div>
+
+                {/* Preview */}
+                <div>
+                  <h3 className="text-sm font-medium text-arb-text mb-3">Preview</h3>
+                  <div className="p-4 rounded-lg bg-arb-surface border border-arb-border space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-arb-accent" />
+                      <span className="text-sm text-arb-text">Active element</span>
+                    </div>
+                    <button className="px-4 py-2 bg-arb-accent text-white rounded-lg text-sm font-medium">
+                      Sample Button
+                    </button>
+                    <div className="flex gap-2">
+                      <span className="px-2 py-1 text-xs rounded bg-arb-accent/20 text-arb-accent">
+                        Tag 1
+                      </span>
+                      <span className="px-2 py-1 text-xs rounded bg-arb-accent/20 text-arb-accent">
+                        Tag 2
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
