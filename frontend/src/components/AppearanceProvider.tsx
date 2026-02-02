@@ -3,18 +3,33 @@
 import { useEffect } from "react";
 
 /**
- * Initialize appearance settings from localStorage on app load.
- * This component should be placed in the root layout.
+ * Syncs appearance settings and listens for changes.
+ * The initial theme is applied via inline script in layout.tsx to prevent flash.
  */
 export function AppearanceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Apply saved theme
-    const savedTheme = localStorage.getItem("theme") || "dark";
-    document.documentElement.setAttribute("data-theme", savedTheme);
+    // Sync body attributes with html (for full CSS coverage)
+    const syncAttributes = () => {
+      const theme = document.documentElement.getAttribute("data-theme");
+      const accent = document.documentElement.getAttribute("data-accent");
+      if (theme) document.body.setAttribute("data-theme", theme);
+      if (accent) document.body.setAttribute("data-accent", accent);
+    };
     
-    // Apply saved accent color
-    const savedAccent = localStorage.getItem("accent") || "purple";
-    document.documentElement.setAttribute("data-accent", savedAccent);
+    syncAttributes();
+    
+    // Watch for attribute changes on html element
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === "data-theme" || mutation.attributeName === "data-accent") {
+          syncAttributes();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => observer.disconnect();
   }, []);
 
   return <>{children}</>;

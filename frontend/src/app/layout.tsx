@@ -8,6 +8,18 @@ export const metadata: Metadata = {
     "A code analysis platform that uses your file tree to provide comprehensive codebase context, AI file modification, branching tree tools, and stunning visualizations.",
 };
 
+// Script to apply theme immediately to prevent flash
+const themeScript = `
+  (function() {
+    try {
+      var theme = localStorage.getItem('theme') || 'dark';
+      var accent = localStorage.getItem('accent') || 'purple';
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-accent', accent);
+    } catch (e) {}
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

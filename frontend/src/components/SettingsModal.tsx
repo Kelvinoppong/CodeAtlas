@@ -20,30 +20,6 @@ const ACCENT_COLORS: { id: AccentType; color: string; label: string }[] = [
   { id: "yellow", color: "#fbbf24", label: "Yellow" },
 ];
 
-// Apply theme to document
-function applyTheme(theme: ThemeType) {
-  if (typeof document !== "undefined") {
-    document.documentElement.setAttribute("data-theme", theme);
-  }
-}
-
-// Apply accent color to document
-function applyAccent(accent: AccentType) {
-  if (typeof document !== "undefined") {
-    document.documentElement.setAttribute("data-accent", accent);
-  }
-}
-
-// Load saved preferences and apply them
-export function initializeAppearance() {
-  if (typeof window !== "undefined") {
-    const savedTheme = (localStorage.getItem("theme") as ThemeType) || "dark";
-    const savedAccent = (localStorage.getItem("accent") as AccentType) || "purple";
-    applyTheme(savedTheme);
-    applyAccent(savedAccent);
-  }
-}
-
 export function SettingsModal({ onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("ai");
   const [aiProvider, setAiProvider] = useState(
@@ -70,13 +46,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   // Apply theme and accent when they change
   useEffect(() => {
-    applyTheme(theme);
-    localStorage.setItem("theme", theme);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", theme);
+      document.body.setAttribute("data-theme", theme);
+      localStorage.setItem("theme", theme);
+    }
   }, [theme]);
 
   useEffect(() => {
-    applyAccent(accent);
-    localStorage.setItem("accent", accent);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-accent", accent);
+      document.body.setAttribute("data-accent", accent);
+      localStorage.setItem("accent", accent);
+    }
   }, [accent]);
 
   const handleSave = () => {
