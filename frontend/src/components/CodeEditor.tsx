@@ -168,6 +168,20 @@ export function CodeEditor({ selectedFile }: CodeEditorProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDownload = () => {
+    if (!code) return;
+    
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName.split("/").pop() || "file.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -197,8 +211,9 @@ export function CodeEditor({ selectedFile }: CodeEditorProps) {
             )}
           </button>
           <button
+            onClick={handleDownload}
             className="p-1.5 rounded hover:bg-arb-hover transition-colors"
-            title="Download"
+            title="Download file"
           >
             <Download className="w-3.5 h-3.5 text-arb-text-dim" />
           </button>

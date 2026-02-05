@@ -39,6 +39,46 @@ export function Header({ onImportClick, onSettingsClick }: HeaderProps) {
     setShowSearch(false);
   };
 
+  const handleExport = async () => {
+    if (!currentProject || !currentSnapshot) {
+      alert("Please import a project first");
+      return;
+    }
+
+    try {
+      // Get file tree for export
+      const files = await api.getFileTree(currentSnapshot.id);
+      
+      const exportData = {
+        project: {
+          name: currentProject.name,
+          id: currentProject.id,
+          exported_at: new Date().toISOString(),
+        },
+        snapshot: {
+          id: currentSnapshot.id,
+          status: currentSnapshot.status,
+        },
+        files: files,
+      };
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: "application/json" 
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${currentProject.name}-export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Export failed. Please try again.");
+    }
+  };
+
   return (
     <header className="h-14 flex-shrink-0 border-b border-arb-border bg-arb-panel flex items-center justify-between px-4">
       {/* Logo & Brand */}
@@ -116,7 +156,10 @@ export function Header({ onImportClick, onSettingsClick }: HeaderProps) {
           <FolderOpen className="w-4 h-4" />
           <span className="hidden sm:inline">Import</span>
         </button>
-        <button className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all">
+        <button 
+          onClick={handleExport}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-arb-surface border border-arb-border rounded-lg hover:bg-arb-hover hover:border-arb-accent/30 transition-all"
+        >
           <Download className="w-4 h-4" />
           <span className="hidden sm:inline">Export</span>
         </button>
