@@ -351,3 +351,291 @@ Then generate:
 - **Edit safety**: no silent writes; rollback always works
 - **Adoption**: returning users + repeated project opens
 
+---
+
+## 🎯 Change Impact Analysis — 5-Day Implementation Sprint
+
+### Overview
+**Feature**: "If I modify this function, what breaks?"
+
+This is a **core differentiator** that demonstrates:
+- Graph data structures (symbol reference graph)
+- BFS/DFS traversal algorithms
+- Static analysis thinking
+- Risk modeling and scoring
+- Large codebase understanding
+
+---
+
+### Day 1: Reference Graph Data Layer & BFS Traversal Core
+**Goal**: Build the foundational graph traversal engine that powers impact analysis
+
+**Tasks**:
+1. **Enhance the Symbol Reference Model**
+   - Ensure `Reference` table captures `from_symbol_id`, `to_symbol_id`, `kind` (call/import/usage/extends)
+   - Add reference `context` field (line snippet where reference occurs)
+   - Index optimization: composite index on `(snapshot_id, to_symbol_id)` for fast reverse lookups
+
+2. **Implement BFS Traversal Engine** (`impact_analyzer.py`)
+   - Build `_trace_impact()` method with configurable `max_depth`
+   - Track visited nodes to prevent cycles
+   - Classify impact as "direct" (distance=1) or "transitive" (distance>1)
+   - Return both impacted symbols AND the path taken to reach them
+
+3. **Add Impact Scoring Algorithm**
+   - `_calculate_risk()` method with weighted scoring:
+     - Number of files affected (weight: high)
+     - Number of symbols affected (weight: medium)
+     - Depth of impact chain (weight: low)
+     - Symbol kind weights (class > function > variable)
+   - Risk levels: `low`, `medium`, `high`, `critical`
+
+**Deliverables**:
+- [ ] Updated `Reference` model with context field
+- [ ] BFS traversal with cycle detection
+- [ ] Risk scoring algorithm
+- [ ] Unit tests for graph traversal
+
+**Technical Notes**:
+```python
+# Core algorithm pseudocode
+def trace_impact(start_symbols, max_depth=3):
+    visited = set(start_symbols)
+    queue = [(sym, 0) for sym in start_symbols]  # (symbol, distance)
+    impacted = []
+    
+    while queue:
+        current, distance = queue.pop(0)  # BFS
+        if distance > max_depth:
+            continue
+        
+        for ref in get_references_to(current):
+            if ref.from_symbol not in visited:
+                visited.add(ref.from_symbol)
+                impacted.append((ref.from_symbol, distance + 1))
+                queue.append((ref.from_symbol, distance + 1))
+    
+    return impacted
+```
+
+---
+
+### Day 2: Impact Analysis API Endpoints
+**Goal**: Expose impact analysis through REST API
+
+**Tasks**:
+1. **Create `/api/impact` Router** (`backend/app/api/impact.py`)
+   - `POST /snapshots/{sid}/impact/analyze-file`
+     - Input: `{ file_paths: string[] }`
+     - Output: Full `ImpactAnalysis` response
+   
+   - `POST /snapshots/{sid}/impact/analyze-symbol`
+     - Input: `{ symbol_ids: string[] }`
+     - Output: Full `ImpactAnalysis` response
+   
+   - `GET /snapshots/{sid}/impact/preview`
+     - Query params: `path`, `line` (for quick hover impact check)
+     - Output: Lightweight impact summary
+
+2. **Response Schema Design**
+   ```typescript
+   interface ImpactAnalysis {
+     changedFiles: string[];
+     changedSymbols: ImpactedSymbol[];
+     impactedFiles: ImpactedFile[];
+     impactedSymbols: ImpactedSymbol[];
+     totalFilesAffected: number;
+     totalSymbolsAffected: number;
+     riskLevel: "low" | "medium" | "high" | "critical";
+     riskExplanation: string;
+     impactGraph: ImpactGraphData;  // For visualization
+   }
+   
+   interface ImpactedSymbol {
+     id: string;
+     name: string;
+     kind: string;
+     filePath: string;
+     startLine: number;
+     endLine: number;
+     impactType: "direct" | "transitive";
+     distance: number;
+     referenceContext?: string;  // The line where it references
+   }
+   
+   interface ImpactGraphData {
+     nodes: GraphNode[];
+     edges: GraphEdge[];
+   }
+   ```
+
+3. **Add API Tests**
+   - Test with mock symbol graph
+   - Test edge cases (orphan symbols, circular deps)
+
+**Deliverables**:
+- [ ] `/api/impact.py` router with 3 endpoints
+- [ ] Pydantic schemas for request/response
+- [ ] Integration tests
+
+---
+
+### Day 3: Impact Graph Visualization Component
+**Goal**: Build interactive impact visualization in the frontend
+
+**Tasks**:
+1. **Create `ImpactGraphViewer` Component** (`frontend/src/components/ImpactGraphViewer.tsx`)
+   - Use React Flow for graph rendering
+   - Node types:
+     - 🔴 **Changed** (red) - the modified symbol
+     - 🟠 **Direct impact** (orange) - distance=1
+     - 🟡 **Transitive impact** (yellow) - distance>1
+   - Edge styling based on reference kind (solid for calls, dashed for imports)
+   - Animated edges showing "ripple effect" from changed node
+
+2. **Layout Algorithm**
+   - Hierarchical layout: changed symbol at top, impacted symbols flow down
+   - Group nodes by file (collapsible file containers)
+   - Support zoom/pan for large graphs
+
+3. **Interactivity**
+   - Click node → open file in editor at symbol location
+   - Hover node → show full signature + docstring
+   - Click edge → highlight the reference line in code
+
+**Deliverables**:
+- [ ] `ImpactGraphViewer.tsx` component
+- [ ] Node/edge type definitions
+- [ ] Click-to-navigate integration with editor
+
+**Visual Design**:
+```
+         ┌─────────────────┐
+         │ 🔴 getUserById  │  ← Changed
+         │   user.ts:45    │
+         └────────┬────────┘
+                  │ calls
+        ┌─────────┴─────────┐
+        ▼                   ▼
+┌──────────────┐    ┌──────────────┐
+│ 🟠 AuthMiddle│    │ 🟠 UserAPI   │  ← Direct
+│  auth.ts:23  │    │  api.ts:89   │
+└──────┬───────┘    └──────────────┘
+       │ calls
+       ▼
+┌──────────────┐
+│ 🟡 LoginFlow │  ← Transitive
+│  login.tsx:12│
+└──────────────┘
+```
+
+---
+
+### Day 4: UI Integration & Impact Panel
+**Goal**: Integrate impact analysis into the main workspace UX
+
+**Tasks**:
+1. **Add "Analyze Impact" Action to Editor**
+   - Right-click context menu: "Analyze Impact of This Function"
+   - Keyboard shortcut: `Ctrl+Shift+I`
+   - Gutter icon on function/class definitions
+
+2. **Create `ImpactPanel` Component** (`frontend/src/components/ImpactPanel.tsx`)
+   - Slide-out panel or modal showing:
+     - **Risk Badge**: Large colored badge (🟢🟡🟠🔴)
+     - **Summary Stats**: X files, Y symbols affected
+     - **Risk Explanation**: Human-readable text
+     - **Impacted Files List**: Collapsible tree
+     - **Graph Toggle**: Switch to visual graph view
+   
+3. **Real-time Impact Preview**
+   - As user types in editor, debounced impact check
+   - Subtle indicator in status bar: "⚠️ 12 dependents"
+   - Click to expand full analysis
+
+4. **Integration with ChangeSet Workflow**
+   - Before applying a ChangeSet, auto-run impact analysis
+   - Block high-risk changes with confirmation dialog
+   - Include impact summary in commit message (optional)
+
+**Deliverables**:
+- [ ] Context menu integration
+- [ ] `ImpactPanel.tsx` component
+- [ ] Real-time impact indicator
+- [ ] ChangeSet pre-apply hook
+
+---
+
+### Day 5: Polish, Testing & Demo Scenarios
+**Goal**: Harden the feature and create impressive demo scenarios
+
+**Tasks**:
+1. **Performance Optimization**
+   - Cache impact analysis results per snapshot+symbol
+   - Lazy load deep transitive impacts (fetch on expand)
+   - Add loading states and progress indicators
+
+2. **Edge Case Handling**
+   - Symbols with 100+ dependents: show "heavily used" warning
+   - Circular dependencies: detect and visualize cycles
+   - External/unresolved references: show as "unknown impact"
+
+3. **Create Demo Scenarios**
+   - **Scenario A**: Rename a utility function → show cascading impact
+   - **Scenario B**: Modify a class interface → highlight all implementations
+   - **Scenario C**: Delete an export → show breaking imports
+
+4. **Add AI Enhancement** (bonus)
+   - "Explain this impact" button → AI summarizes what breaks and why
+   - Suggest safest refactoring approach based on impact graph
+
+5. **Documentation & Recording**
+   - Record demo video showing impact analysis in action
+   - Write user guide section
+
+**Deliverables**:
+- [ ] Cached impact analysis
+- [ ] Edge case handling
+- [ ] 3 demo scenarios tested
+- [ ] (Bonus) AI impact explanation
+- [ ] Demo video/screenshots
+
+---
+
+### Technical Architecture Summary
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND                                 │
+│  ┌──────────────┐  ┌───────────────────┐  ┌──────────────────┐ │
+│  │ CodeEditor   │  │ ImpactPanel       │  │ ImpactGraphViewer│ │
+│  │ (Monaco)     │──│ - Risk Badge      │──│ (React Flow)     │ │
+│  │ - Gutter     │  │ - File List       │  │ - Nodes/Edges    │ │
+│  │ - Context    │  │ - Stats           │  │ - Click-to-nav   │ │
+│  └──────────────┘  └───────────────────┘  └──────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │ API
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        BACKEND                                  │
+│  ┌──────────────┐  ┌───────────────────┐  ┌──────────────────┐ │
+│  │ /api/impact  │  │ ImpactAnalyzer    │  │ Reference Graph  │ │
+│  │ - analyze-   │──│ - BFS traversal   │──│ (PostgreSQL)     │ │
+│  │   file       │  │ - Risk scoring    │  │ - symbols        │ │
+│  │ - analyze-   │  │ - Path tracking   │  │ - references     │ │
+│  │   symbol     │  │                   │  │                  │ │
+│  └──────────────┘  └───────────────────┘  └──────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Day 1 Checklist (Start Today!)
+
+- [ ] Review existing `impact_analyzer.py` implementation
+- [ ] Add `context` field to `Reference` model
+- [ ] Implement path tracking in `_trace_impact()`
+- [ ] Write unit tests for BFS traversal
+- [ ] Test with a real codebase (this project!)
+
+**Time estimate**: 4-6 hours

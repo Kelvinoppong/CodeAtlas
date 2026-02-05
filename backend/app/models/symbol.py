@@ -148,6 +148,10 @@ class Reference(Base, TimestampMixin):
     line: Mapped[int] = mapped_column(Integer, nullable=False)
     column: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     
+    # Context: the actual line of code where the reference occurs
+    # Useful for showing developers exactly where a symbol is used
+    context: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    
     # Relationships
     from_symbol: Mapped["Symbol"] = relationship(
         "Symbol",

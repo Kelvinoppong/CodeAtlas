@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import projects, snapshots, files, symbols, ai, changesets, auth, websocket, system
+from app.api import projects, snapshots, files, symbols, ai, changesets, auth, websocket, system, impact
 from app.core.config import settings
 from app.core.database import init_db, close_db
 
@@ -74,6 +74,7 @@ app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(snapshots.router, prefix="/snapshots", tags=["Snapshots"])
 app.include_router(files.router, prefix="/snapshots/{snapshot_id}/files", tags=["Files"])
 app.include_router(symbols.router, prefix="/snapshots/{snapshot_id}/symbols", tags=["Symbols"])
+app.include_router(impact.router, prefix="/snapshots/{snapshot_id}/impact", tags=["Impact Analysis"])
 app.include_router(ai.router, prefix="/snapshots/{snapshot_id}/ai", tags=["AI"])
 app.include_router(changesets.router, prefix="/changesets", tags=["ChangeSets"])
 app.include_router(system.router, prefix="/system", tags=["System"])
