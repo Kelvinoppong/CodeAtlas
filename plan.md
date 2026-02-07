@@ -25,7 +25,7 @@ Primary design constraint: **“Deep context, safe edits.”** That means durabl
   - “AI reasoning” responses anchored to code entities (files/symbols)
 
 - **Right panel: Code Editor**
-  - Monaco editor w/ syntax highlightingk
+  - Monaco editor w/ syntax highlighting
   - Jump to definition / references (from index)
   - AI “propose change” opens diff/preview
 
@@ -639,3 +639,4 @@ def trace_impact(start_symbols, max_depth=3):
 - [ ] Test with a real codebase (this project!)
 
 **Time estimate**: 4-6 hours
+
