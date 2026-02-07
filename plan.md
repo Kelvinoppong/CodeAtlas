@@ -25,7 +25,7 @@ Primary design constraint: **“Deep context, safe edits.”** That means durabl
   - “AI reasoning” responses anchored to code entities (files/symbols)
 
 - **Right panel: Code Editor**
-  - Monaco editor w/ syntax highlighting
+  - Monaco editor w/ syntax highlightingk
   - Jump to definition / references (from index)
   - AI “propose change” opens diff/preview
 

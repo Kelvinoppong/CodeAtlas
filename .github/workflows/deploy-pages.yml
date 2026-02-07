@@ -1,9 +1,9 @@
-# Deploy CodeAtlas Frontend to GitHub Pages
-name: Deploy to GitHub Pages
+# Deploy Next.js static site to GitHub Pages
+name: Deploy Next.js to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -18,34 +18,38 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
 
       - name: Install dependencies
-        working-directory: frontend
-        run: npm install
+        run: npm install --legacy-peer-deps
 
-      - name: Build static site
-        working-directory: frontend
-        env:
-          STATIC_EXPORT: 'true'
-          GITHUB_PAGES: 'true'
-          NEXT_PUBLIC_DEMO_MODE: 'true'
+      - name: Build with Next.js
         run: npm run build
+        env:
+          STATIC_EXPORT: "true"
+          GITHUB_PAGES: "true"
+          NEXT_PUBLIC_DEMO_MODE: "true"
 
-      - name: Add .nojekyll file
-        run: touch frontend/out/.nojekyll
+      - name: Create .nojekyll
+        run: touch out/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: frontend/out
+          path: ./frontend/out
 
   deploy:
     environment:
