@@ -1,24 +1,11 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { MessageSquare, GitBranch, Clock, Volume2, FileCode2, Loader2 } from "lucide-react";
+import { MessageSquare, GitBranch, Clock, Volume2, FileCode2 } from "lucide-react";
 import clsx from "clsx";
 import { ChatPanel } from "./ChatPanel";
 import { ChangeSetPanel } from "./ChangeSetPanel";
 import { TimelinePanel } from "./TimelinePanel";
-
-// Dynamic import for GraphViewer to avoid SSR issues with ReactFlow
-const GraphViewer = dynamic(
-  () => import("./GraphViewer").then((mod) => mod.GraphViewer),
-  { 
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-8 h-8 text-arb-accent animate-spin" />
-      </div>
-    ),
-  }
-);
+import { GraphViewerSimple } from "./GraphViewerSimple";
 
 type TabType = "chat" | "graph" | "timeline" | "changes";
 
@@ -67,7 +54,7 @@ export function CenterCanvas({ activeTab, onTabChange }: CenterCanvasProps) {
 
       {/* Canvas Content */}
       <div className="flex-1 overflow-hidden">
-        {activeTab === "graph" && <GraphViewer />}
+        {activeTab === "graph" && <GraphViewerSimple />}
         {activeTab === "chat" && <ChatPanel />}
         {activeTab === "changes" && <ChangeSetPanel />}
         {activeTab === "timeline" && <TimelinePanel />}
