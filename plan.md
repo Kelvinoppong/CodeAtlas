@@ -639,4 +639,3 @@ def trace_impact(start_symbols, max_depth=3):
 - [ ] Test with a real codebase (this project!)
 
 **Time estimate**: 4-6 hours
-
