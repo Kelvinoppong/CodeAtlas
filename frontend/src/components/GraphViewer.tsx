@@ -21,40 +21,41 @@ import api, { GraphNode, GraphEdge } from "@/lib/api";
 
 // Custom diamond node matching the screenshot
 function DiamondNode({ data }: { data: { label: string; type?: string } }) {
-  const getColor = () => {
+  const getGradient = () => {
     switch (data.type) {
       case "class":
-        return "from-yellow-400 to-amber-500";
+        return "linear-gradient(135deg, #facc15 0%, #f59e0b 100%)"; // yellow to amber
       case "function":
       case "method":
-        return "from-blue-400 to-indigo-500";
+        return "linear-gradient(135deg, #60a5fa 0%, #6366f1 100%)"; // blue to indigo
       case "file":
-        return "from-arb-node to-arb-accent";
+        return "linear-gradient(135deg, #fbbf24 0%, #f97316 100%)"; // amber to orange
       default:
-        return "from-arb-node to-arb-accent";
+        return "linear-gradient(135deg, #fbbf24 0%, #f97316 100%)"; // amber to orange (like screenshot)
     }
   };
 
   return (
     <div className="relative flex flex-col items-center">
-      <Handle type="target" position={Position.Top} className="!bg-arb-accent !w-2 !h-2 !border-0" />
-      <Handle type="target" position={Position.Left} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Top} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
+      <Handle type="target" position={Position.Left} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
       <div
-        className={`w-12 h-12 bg-gradient-to-br ${getColor()} rounded-lg diamond shadow-glow cursor-pointer hover:scale-110 transition-transform`}
+        className="w-12 h-12 rounded-lg cursor-pointer hover:scale-110 transition-transform"
         style={{
-          boxShadow: "0 0 20px rgba(196, 181, 253, 0.4)",
+          background: getGradient(),
+          boxShadow: "0 0 20px rgba(251, 191, 36, 0.4)",
           transform: "rotate(45deg)",
         }}
       />
-      <Handle type="source" position={Position.Bottom} className="!bg-arb-accent !w-2 !h-2 !border-0" />
-      <Handle type="source" position={Position.Right} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Bottom} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
+      <Handle type="source" position={Position.Right} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
       {/* Label below the diamond */}
-      <div className="mt-2 px-2 py-1 bg-arb-surface/80 rounded text-center max-w-[120px]">
-        <span className="text-xs font-medium text-arb-text whitespace-nowrap overflow-hidden text-ellipsis block">
+      <div className="mt-2 px-2 py-1 rounded text-center max-w-[120px]" style={{ backgroundColor: "rgba(26, 26, 36, 0.8)" }}>
+        <span className="text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis block" style={{ color: "#e4e4eb" }}>
           {data.label}
         </span>
         {data.type && (
-          <span className="text-[10px] text-arb-text-dim">{data.type}</span>
+          <span className="text-[10px]" style={{ color: "#8888a0" }}>{data.type}</span>
         )}
       </div>
     </div>
@@ -63,17 +64,17 @@ function DiamondNode({ data }: { data: { label: string; type?: string } }) {
 
 // Standard node for larger graphs
 function StandardNode({ data }: { data: { label: string; type?: string } }) {
-  const getBgColor = () => {
+  const getStyles = () => {
     switch (data.type) {
       case "class":
-        return "bg-yellow-500/20 border-yellow-500/50 hover:border-yellow-400";
+        return { background: "rgba(234, 179, 8, 0.2)", borderColor: "rgba(234, 179, 8, 0.5)" };
       case "function":
       case "method":
-        return "bg-blue-500/20 border-blue-500/50 hover:border-blue-400";
+        return { background: "rgba(59, 130, 246, 0.2)", borderColor: "rgba(59, 130, 246, 0.5)" };
       case "file":
-        return "bg-arb-accent/20 border-arb-accent/50 hover:border-arb-accent";
+        return { background: "rgba(167, 139, 250, 0.2)", borderColor: "rgba(167, 139, 250, 0.5)" };
       default:
-        return "bg-arb-surface border-arb-border hover:border-arb-accent/50";
+        return { background: "#1a1a24", borderColor: "#2a2a3a" };
     }
   };
 
@@ -87,25 +88,28 @@ function StandardNode({ data }: { data: { label: string; type?: string } }) {
     }
   };
 
+  const styles = getStyles();
+
   return (
     <div className="relative">
-      <Handle type="target" position={Position.Top} className="!bg-arb-accent !w-2 !h-2 !border-0" />
-      <Handle type="target" position={Position.Left} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="target" position={Position.Top} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
+      <Handle type="target" position={Position.Left} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
       <div
-        className={`px-3 py-2 rounded-lg border-2 ${getBgColor()} cursor-pointer hover:scale-105 transition-all shadow-lg`}
+        className="px-3 py-2 rounded-lg border-2 cursor-pointer hover:scale-105 transition-all shadow-lg"
+        style={{ backgroundColor: styles.background, borderColor: styles.borderColor }}
       >
         <div className="flex items-center gap-2">
           <span className="text-xs opacity-60">{getTypeIcon()}</span>
-          <span className="text-sm font-medium text-arb-text max-w-[150px] truncate">
+          <span className="text-sm font-medium max-w-[150px] truncate" style={{ color: "#e4e4eb" }}>
             {data.label}
           </span>
         </div>
         {data.type && (
-          <span className="text-[10px] text-arb-text-dim block mt-0.5">{data.type}</span>
+          <span className="text-[10px] block mt-0.5" style={{ color: "#8888a0" }}>{data.type}</span>
         )}
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-arb-accent !w-2 !h-2 !border-0" />
-      <Handle type="source" position={Position.Right} className="!bg-arb-accent !w-2 !h-2 !border-0" />
+      <Handle type="source" position={Position.Bottom} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
+      <Handle type="source" position={Position.Right} style={{ background: "#a78bfa", width: 8, height: 8, border: "none" }} />
     </div>
   );
 }
