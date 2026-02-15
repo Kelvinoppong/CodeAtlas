@@ -17,6 +17,7 @@ from app.models.project import Project
 from app.indexer.engine import IndexingEngine
 from app.services.impact_analyzer import ImpactAnalyzer
 from app.services.git_service import GitService
+from app.services.architecture_service import ArchitectureService
 
 router = APIRouter()
 
@@ -110,6 +111,23 @@ async def get_dependency_graph(
     graph = await engine.get_dependency_graph(snapshot_id, file_path=path)
 
     return graph
+
+
+@router.get("/{snapshot_id}/architecture")
+async def get_architecture(
+    snapshot_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get raw architecture data for the snapshot (Layer 1 aggregation)"""
+    result = await db.execute(select(Snapshot).where(Snapshot.id == snapshot_id))
+    snapshot = result.scalar_one_or_none()
+
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+
+    service = ArchitectureService(db, snapshot_id)
+    data = await service.aggregate()
+    return service.to_dict(data)
 
 
 @router.get("/{snapshot_id}/graphs/calls")
