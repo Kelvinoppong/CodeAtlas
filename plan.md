@@ -639,3 +639,104 @@ def trace_impact(start_symbols, max_depth=3):
 - [ ] Test with a real codebase (this project!)
 
 **Time estimate**: 4-6 hours
+
+---
+
+## 🏗️ Auto Architecture Summary — 5-Layer Implementation
+
+### Overview
+**Feature**: Auto-generate architecture documentation for any imported codebase.
+
+**Outputs**:
+1. **System design overview** — High-level structure, entry points, tech stack
+2. **Backend–frontend interaction** — API boundaries, data flow, request/response patterns
+3. **Folder responsibility breakdown** — What each folder does, key files
+4. **Database schema summary** — Tables, columns, relationships (when detectable)
+
+---
+
+### Layer 1: Architecture Data Aggregation Service ✅
+**Goal**: Collect raw data from the snapshot to feed the summary
+
+**Tasks**:
+- [x] Create `ArchitectureService` in `backend/app/services/architecture_service.py`
+- [x] Aggregate `system_overview`: top-level folders, file count, languages, entry points
+- [x] Aggregate `folder_breakdown`: per-folder stats, inferred purpose, key files
+- [x] Aggregate `backend_frontend_boundaries`: API routes, client paths (from file structure)
+- [x] Aggregate `database_schema`: infer from models/* or schema files
+
+**Data structures**:
+```python
+ArchitectureData = {
+  "system_overview": { "top_folders", "file_count", "languages", "entry_points" },
+  "folder_breakdown": [ { "path", "file_count", "purpose", "key_files" } ],
+  "backend_frontend": { "api_paths", "client_paths", "boundary_files" },
+  "database_schema": [ { "table", "columns", "relationships" } ]
+}
+```
+
+---
+
+### Layer 2: Backend API Endpoint ✅
+**Goal**: Expose architecture data via REST
+
+**Tasks**:
+- [x] `GET /snapshots/{id}/architecture` — Returns raw `ArchitectureData`
+- [x] `GET /snapshots/{id}/architecture/summary` — Template-based human-readable summary
+- [x] Pydantic response schemas (`ArchitectureDataResponse`, `ArchitectureSummaryResponse`)
+- [x] Template-based summary generation (no AI needed, fallback for Layer 3)
+- [x] Register router in `main.py`
+
+---
+
+### Layer 3: AI Summary Generation
+**Goal**: Use LLM to generate human-readable summaries from raw data
+
+**Tasks**:
+- [ ] `POST /snapshots/{id}/architecture/generate` — Triggers AI summary
+- [ ] Prompt template: system overview + folder breakdown + schema
+- [ ] Store generated summary (optional cache)
+- [ ] Fallback: template-based summary when AI unavailable
+
+---
+
+### Layer 4: Frontend Architecture Panel
+**Goal**: Display architecture summary in the UI
+
+**Tasks**:
+- [ ] `ArchitecturePanel` component with tabs/sections
+- [ ] System overview card
+- [ ] Folder breakdown (expandable tree)
+- [ ] Backend–frontend diagram (Mermaid or simple)
+- [ ] Database schema table
+- [ ] "Generate" button to refresh
+
+---
+
+### Layer 5: Integration & Polish
+**Goal**: Wire into workspace, add to Center Canvas
+
+**Tasks**:
+- [ ] Add "Architecture" tab to Center Canvas
+- [ ] Loading state, error handling
+- [ ] Export as Markdown option
+- [ ] Cache summary per snapshot
+
+---
+
+### Layer 1 Checklist (Start Today!)
+
+- [x] Create `architecture_service.py`
+- [x] Implement `aggregate_system_overview()`
+- [x] Implement `aggregate_folder_breakdown()`
+- [x] Implement `aggregate_backend_frontend()`
+- [x] Implement `aggregate_database_schema()`
+
+### Layer 2 Checklist (Complete!)
+
+- [x] Create `backend/app/api/architecture.py`
+- [x] Pydantic schemas: `SystemOverviewResponse`, `FolderBreakdownResponse`, `BackendFrontendResponse`, `TableSchemaResponse`, `ArchitectureDataResponse`, `ArchitectureSummaryResponse`
+- [x] `GET /snapshots/{id}/architecture` — raw data endpoint
+- [x] `GET /snapshots/{id}/architecture/summary` — template summary endpoint
+- [x] `_generate_template_summary()` — human-readable text from raw data
+- [x] Register `architecture.router` in `main.py`
